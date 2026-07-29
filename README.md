@@ -2,15 +2,34 @@
 
 SurvivorsStudio 팀 공용 Claude Code 플러그인 마켓플레이스.
 
-## 설치 (팀원 1회)
+## 설치
 
-Claude Code 세션에서:
+### 방법 A — `devops-docs` 를 클론한다 (권장, 설정 불필요)
+
+[devops-docs](https://github.com/SurvivorsStudio/devops-docs) 에 `.claude/settings.json` 이 커밋돼
+있습니다. 그 폴더에서 Claude Code 세션을 열면 `/devkit:new-app` 이 **그냥 있습니다.**
+
+```bash
+git clone https://github.com/SurvivorsStudio/devops-docs
+cd devops-docs
+claude
+```
+
+### 방법 B — 직접 설치 (어느 폴더에서든 쓰고 싶을 때)
 
 ```
 /plugin marketplace add SurvivorsStudio/devkit
 /plugin install devkit@survivors
 /reload-plugins
 ```
+
+> ⚠️ `/plugin` 은 대화형 패널을 여는 커맨드라 **환경에 따라 막혀 있습니다**
+> ("`/plugin` isn't available in this environment"). 그럴 때는 터미널에서 `claude` 를 직접 띄워
+> 실행하거나, 방법 A 를 쓰십시오.
+>
+> 설치 결과는 `~/.claude/settings.json` 에 저장되고 터미널과 앱이 같은 파일을 읽습니다.
+> 즉 **터미널에서 한 번 설치하면 앱에서도 쓸 수 있습니다** — 단, 설치 전에 시작된 세션은
+> 플러그인을 이미 로드한 뒤라 `/reload-plugins` 를 하거나 새 세션을 열어야 잡힙니다.
 
 ## 쓰는 법
 
