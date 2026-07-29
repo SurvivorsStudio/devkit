@@ -1,0 +1,13 @@
+{
+  "name": "survivors",
+  "owner": {
+    "name": "SurvivorsStudio"
+  },
+  "plugins": [
+    {
+      "name": "devkit",
+      "source": "./plugins/devkit",
+      "description": "SurvivorsStudio 앱 개발 커맨드 모음. 지금은 /devkit:new-app 하나입니다."
+    }
+  ]
+}
