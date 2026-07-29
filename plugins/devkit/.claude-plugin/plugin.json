@@ -1,7 +1,6 @@
 {
   "name": "devkit",
   "description": "SurvivorsStudio 앱 개발 커맨드. app-template 에서 새 앱 레포를 만듭니다.",
-  "version": "0.1.0",
   "author": {
     "name": "SurvivorsStudio"
   }
