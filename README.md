@@ -37,6 +37,7 @@ claude
 |---|---|
 | `/new-app` | `app-template` 에서 새 앱 레포를 만듭니다 |
 | `/pr` | 논리 단위로 커밋 → AI 리뷰 → PR 생성 (머지는 안 함) |
+| `/pr-merge #12` | CI 통과를 기다린 뒤 **squash** 머지 → 브랜치 정리 → 로컬 main 갱신 |
 
 ## 쓰는 법
 
@@ -70,6 +71,24 @@ claude
 
 리뷰는 **한 번만** 돌립니다. 고친 뒤 재리뷰는 요청할 때만 합니다.
 
+## `/pr-merge` 흐름
+
+```
+1. 번호를 받는다                      #12 · 12 · URL. 없으면 현재 브랜치의 PR
+2. 머지 가능한지 확인                 draft·닫힘·충돌이면 중단 (충돌 자동 해결 안 함)
+3. CI 통과를 기다린다                 실패하면 머지하지 않고 어떤 잡인지 보고
+4. squash 메시지를 만든다             제목=PR 제목, 본문=개별 커밋 목록
+5. 요약을 보여주고 확인받는다          번호를 잘못 읽어 다른 PR 을 머지하는 사고 방지
+6. squash 머지                        --squash 고정. --merge·--rebase·--admin 금지
+7. 브랜치 삭제 + 로컬 main 갱신
+```
+
+**항상 squash 입니다.** 다른 방식은 쓰지 않습니다.
+
+> squash 머지 후에는 `git branch -d` 가 거부됩니다 — squash 는 브랜치 커밋을 `main` 의 조상으로
+> 만들지 않아 git 이 "머지되지 않았다"고 봅니다. 스킬은 머지 성공(`state == MERGED`)을 확인한
+> **뒤에만** `-D` 로 지웁니다.
+
 ## 구조
 
 ```
@@ -79,7 +98,8 @@ plugins/devkit/
 ├── agents/pr-reviewer.md           ← /pr 이 호출하는 리뷰어 (읽기 전용)
 └── skills/
     ├── new-app/SKILL.md            ← /new-app
-    └── pr/SKILL.md                 ← /pr
+    ├── pr/SKILL.md                 ← /pr
+    └── pr-merge/SKILL.md           ← /pr-merge
 ```
 
 `.claude-plugin/` 안에는 **매니페스트만** 둡니다. 스킬·훅 파일을 이 폴더에 넣으면 안 됩니다.
