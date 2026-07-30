@@ -48,6 +48,12 @@ git log --format='%h %s' $(git merge-base HEAD origin/main)..HEAD
   `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci` `chore` 중 하나
 - 커밋 단위가 논리적으로 나뉘었는지. 서로 무관한 변경이 한 커밋에 섞였으면 지적한다
 - 커밋 메시지가 **무엇을 했는지가 아니라 왜 했는지**를 담고 있는지
+- **본문에 중첩 괄호가 있는지 확인한다.** `Number(await get(k) ?? '0')` 처럼 괄호 안에 괄호가
+  또 열리면 release-please 의 커밋 파서가 실패한다 (`unexpected token '(' `). 실패한 커밋은
+  Conventional Commits 로 인식되지 않아 **버전 계산에서 조용히 빠진다** — `feat` 를 넣었는데
+  마이너가 안 올라가는 식으로 나타난다. 단일 괄호(`(로그: ...)`, `커밋(abc123)`)는 문제없다.
+  걸리면 코드 조각을 문장으로 풀어 쓰라고 제안한다: "매번 문자열을 숫자로 바꾸고 다시 문자열로
+  되돌리는 변환이 필요합니다" 처럼
 
 ### 4. `core` 승격 후보 — 반드시 확인한다
 
