@@ -31,6 +31,13 @@ claude
 > 즉 **터미널에서 한 번 설치하면 앱에서도 쓸 수 있습니다** — 단, 설치 전에 시작된 세션은
 > 플러그인을 이미 로드한 뒤라 `/reload-plugins` 를 하거나 새 세션을 열어야 잡힙니다.
 
+## 커맨드
+
+| 커맨드 | 하는 일 |
+|---|---|
+| `/new-app` | `app-template` 에서 새 앱 레포를 만듭니다 |
+| `/pr` | 논리 단위로 커밋 → AI 리뷰 → PR 생성 (머지는 안 함) |
+
 ## 쓰는 법
 
 ```
@@ -50,13 +57,29 @@ claude
 /devkit:new-app 한손점프
 ```
 
+## `/pr` 흐름
+
+```
+1. main 이면 새 브랜치를 딴다          (feat/… fix/… — 변경 내용에서 유추)
+2. 변경사항을 읽고 논리 단위로 커밋     (Conventional Commits, git add -A 금지)
+3. pr-reviewer 서브에이전트가 리뷰      (읽기 전용 — 코드를 고치지 않음)
+4. 보완 사항이 있으면 그대로 보여주고   지금 고칠지 / 넘길지 묻는다
+5. 넘긴 항목은 PR 본문에 기록          조용히 버리지 않음
+6. 푸시하고 PR 생성                    머지는 하지 않음
+```
+
+리뷰는 **한 번만** 돌립니다. 고친 뒤 재리뷰는 요청할 때만 합니다.
+
 ## 구조
 
 ```
 .claude-plugin/marketplace.json     ← 마켓플레이스 레지스트리 (name: survivors)
 plugins/devkit/
 ├── .claude-plugin/plugin.json      ← 매니페스트만
-└── skills/new-app/SKILL.md         ← /devkit:new-app
+├── agents/pr-reviewer.md           ← /pr 이 호출하는 리뷰어 (읽기 전용)
+└── skills/
+    ├── new-app/SKILL.md            ← /new-app
+    └── pr/SKILL.md                 ← /pr
 ```
 
 `.claude-plugin/` 안에는 **매니페스트만** 둡니다. 스킬·훅 파일을 이 폴더에 넣으면 안 됩니다.
