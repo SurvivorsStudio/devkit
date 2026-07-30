@@ -99,6 +99,16 @@ npx cap add ios
 npx cap add android
 ```
 
+### 세션 기록 폴더
+
+```bash
+mkdir -p .done
+```
+
+`/done` 이 세션 요약을 여기에 씁니다. **gitignore 되므로 커밋되지 않습니다** — 템플릿에 담아
+전달할 수 없어 앱을 만들 때 로컬에 생성합니다. `app-template` 의 `.gitignore` 에 `.done/` 이
+들어 있는지 확인하십시오.
+
 Xcode 나 Java 가 없어도 `cap add` 는 동작합니다. 실제 빌드에만 필요합니다.
 
 ### 앱 레포용으로 문서 손보기

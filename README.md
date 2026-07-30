@@ -38,6 +38,7 @@ claude
 | `/new-app` | `app-template` 에서 새 앱 레포를 만듭니다 |
 | `/pr` | 논리 단위로 커밋 → AI 리뷰 → PR 생성 (머지는 안 함) |
 | `/pr-merge #12` | CI 통과를 기다린 뒤 **squash** 머지 → 브랜치 정리 → 로컬 main 갱신 |
+| `/done` | 이 세션의 결정과 이유를 `.done/` 에 기록 (gitignore, 개인 로컬) |
 
 ## 쓰는 법
 
@@ -99,8 +100,23 @@ plugins/devkit/
 └── skills/
     ├── new-app/SKILL.md            ← /new-app
     ├── pr/SKILL.md                 ← /pr
-    └── pr-merge/SKILL.md           ← /pr-merge
+    ├── pr-merge/SKILL.md           ← /pr-merge
+    └── done/SKILL.md               ← /done
 ```
+
+## `/done` 이 남기는 것
+
+**`git log` 가 아는 것은 기록하지 않습니다.** 파일별 변경 요약은 중복입니다.
+
+```
+결정과 근거          코드는 결과만 보여줌. 왜 그 선택이었는지는 사라짐
+시도했다 버린 것      다음 사람이 같은 길을 다시 걷지 않게 함 — 가장 값진 항목
+틀렸던 전제          문서나 계획이 사실과 달랐던 지점
+남은 일 · 막힌 것     다음 세션의 출발점
+```
+
+`.done/` 은 gitignore 되며 각 레포 루트에 생깁니다. 새 앱은 `/new-app` 이 만들어 둡니다.
+**세션 시작 때 통째로 읽는 곳이 아닙니다** — "이거 왜 이렇게 됐지?" 싶을 때 grep 합니다.
 
 `.claude-plugin/` 안에는 **매니페스트만** 둡니다. 스킬·훅 파일을 이 폴더에 넣으면 안 됩니다.
 

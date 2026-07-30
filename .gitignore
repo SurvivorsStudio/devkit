@@ -1,3 +1,6 @@
 .DS_Store
 *.log
 node_modules/
+
+# 세션 기록 — /done 이 쓰는 개인 로컬 파일
+.done/
