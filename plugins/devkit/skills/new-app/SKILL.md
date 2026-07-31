@@ -89,15 +89,18 @@ const skipFile=new Set(["TEMPLATE.md"]);
 grep -rn "{{APP_" --include="*.ts" --include="*.json" --include="*.html" --include="*.md" . | grep -v node_modules
 ```
 
-### 정리와 빌드
+### 설치와 빌드
 
 ```bash
-rm TEMPLATE.md
 npm install
 npm run build          # cap add 가 dist/ 를 복사하므로 빌드가 먼저입니다
 npx cap add ios
 npx cap add android
 ```
+
+> ⚠️ **`TEMPLATE.md` 를 여기서 지우지 마십시오.** 4단계(로그인 · Firebase 콘솔 설정)가 아직
+> 남아 있고, 그건 사람이 콘솔에서 직접 해야 합니다. 삭제는 그 문서의 5단계("정리")에 이미
+> 사람이 할 일로 적혀 있습니다 — 이 커맨드가 대신 지우면 그 안내를 못 보고 지나칩니다.
 
 ### 세션 기록 폴더
 
@@ -138,6 +141,9 @@ git push origin main
 - [ ] 번들 ID 가 `ios/App/App.xcodeproj/project.pbxproj` 와 `android/app/build.gradle` 에 박혔는지
 - [ ] `git status` 가 깨끗하고 origin 과 동기화됨
 - [ ] `gh run list --limit 1` 이 success
+- [ ] `npm run dev` 로 로그인 화면이 뜨는지 (구글·게스트 버튼 보임, Apple 은 비활성) —
+      Firebase 를 아직 설정 안 했으니 눌러보면 `auth/api-key-not-valid` 에러가 뜨는 것이
+      **정상입니다.** 크래시만 없으면 배선은 살아 있는 것입니다
 
 ---
 
@@ -145,7 +151,10 @@ git push origin main
 
 - 레포 URL
 - 다음 할 일: `npm run dev` → 탭 카운터가 새로고침 후에도 남으면 `@survivorsstudio/core` 배선이
-  살아 있는 것. 확인했으면 `src/main.ts` 를 지우고 앱을 만들기 시작
+  살아 있는 것. 확인했으면 `src/main.ts` 의 스모크 테스트 블록을 지우고 앱을 만들기 시작
+- **로그인이 아직 동작하지 않는다는 것을 명시적으로 알리십시오.** `TEMPLATE.md` 의
+  "4. 로그인(Firebase Auth) 설정" 체크리스트를 완료해야 구글·게스트 로그인이 실제로 됩니다.
+  Apple 로그인은 유료 Developer Program 등록 전까지 의도적으로 비활성입니다
 - 남은 자리표시자: `resources/icon.png`, `resources/splash.png`
 
 ---

@@ -40,7 +40,8 @@ git log --format='%h %s' $(git merge-base HEAD origin/main)..HEAD
 | CI 에 macOS 잡 추가 금지 | Actions 쿼터를 10배로 소진 (Free 플랜 실질 월 200분) |
 | 앱 안에서 `@survivorsstudio/core` 수정 금지 | `node_modules` 수정이나 core 코드 복사는 공통화를 무의미하게 함. core 레포에 PR |
 | 번들 ID 에 하이픈 금지 | Android `applicationId` 의 각 마디는 Java 식별자여야 함 |
-| 커밋되면 안 되는 것 | 토큰·키·`.env`·`.claude/settings.local.json` |
+| 커밋되면 안 되는 것 | 토큰·키·`.env`·`.claude/settings.local.json`·`GoogleService-Info.plist`·`google-services.json` |
+| Apple 로그인 임의 활성화 금지 | `auth-screen.ts` 의 `APPLE_LOGIN_ENABLED` 를 `true` 로 바꾸는 PR 이 보이면, 그 앱이 유료 Apple Developer Program 을 실제로 등록했는지 물어봐야 함 (등록 없이 켜면 빌드가 capability 오류로 깨짐) |
 
 ### 3. 커밋 위생
 
