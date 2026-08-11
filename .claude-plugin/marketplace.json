@@ -7,7 +7,7 @@
     {
       "name": "devkit",
       "source": "./plugins/devkit",
-      "description": "SurvivorsStudio 앱 개발 커맨드 모음. 지금은 /devkit:new-app 하나입니다."
+      "description": "SurvivorsStudio 앱 개발 커맨드 — /onboard(환경 진단·정상화) /new-app /pr /pr-merge /done"
     }
   ]
 }

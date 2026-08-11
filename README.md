@@ -4,37 +4,51 @@ SurvivorsStudio 팀 공용 Claude Code 플러그인 마켓플레이스.
 
 ## 설치
 
-### 방법 A — `devops-docs` 를 클론한다 (권장, 설정 불필요)
-
-[devops-docs](https://github.com/SurvivorsStudio/devops-docs) 에 `.claude/settings.json` 이 커밋돼
-있습니다. 그 폴더에서 Claude Code 세션을 열면 `/devkit:new-app` 이 **그냥 있습니다.**
+**셸에서 두 줄입니다.** (Claude Code 세션 안이 아닙니다)
 
 ```bash
-git clone https://github.com/SurvivorsStudio/devops-docs
-cd devops-docs
-claude
+claude plugin marketplace add SurvivorsStudio/devkit
+claude plugin install devkit@survivors
 ```
 
-### 방법 B — 직접 설치 (어느 폴더에서든 쓰고 싶을 때)
+확인하고 **세션을 새로 엽니다:**
 
-```
-/plugin marketplace add SurvivorsStudio/devkit
-/plugin install devkit@survivors
-/reload-plugins
+```bash
+claude plugin list          # devkit@survivors ✔ enabled
 ```
 
-> ⚠️ `/plugin` 은 대화형 패널을 여는 커맨드라 **환경에 따라 막혀 있습니다**
-> ("`/plugin` isn't available in this environment"). 그럴 때는 터미널에서 `claude` 를 직접 띄워
-> 실행하거나, 방법 A 를 쓰십시오.
+기본 스코프가 `user` 이므로 **한 번 설치하면 어느 폴더에서든 잡힙니다.** 앱마다 다시 설치할
+필요가 없습니다. 설치가 끝나면 나머지 환경 점검은 `/onboard` 가 합니다.
+
+> **⚠️ 2026-08-11 정정 — 레포 클론만으로는 설치되지 않습니다.**
 >
-> 설치 결과는 `~/.claude/settings.json` 에 저장되고 터미널과 앱이 같은 파일을 읽습니다.
-> 즉 **터미널에서 한 번 설치하면 앱에서도 쓸 수 있습니다** — 단, 설치 전에 시작된 세션은
-> 플러그인을 이미 로드한 뒤라 `/reload-plugins` 를 하거나 새 세션을 열어야 잡힙니다.
+> 이전 README 는 "`devops-docs` 에 `.claude/settings.json` 이 커밋돼 있으니 그 폴더에서 세션을
+> 열면 `/devkit:new-app` 이 그냥 있다" 고 안내했습니다. **틀렸습니다.** 실제로 `/new-app` 이
+> `Unknown command` 로 실패했고, `~/.claude/plugins/known_marketplaces.json` 과
+> `installed_plugins.json` 양쪽에 `survivors` · `devkit` 이 없었습니다.
+>
+> `extraKnownMarketplaces` 와 `enabledPlugins` 는 **"이 플러그인을 쓴다" 는 선언**이고
+> clone·설치를 트리거하지 않습니다. 설정 커밋이 없애 준 것은 *무엇을 설치할지 알아내는 일*이지
+> 설치 그 자체가 아닙니다.
+>
+> **설치 여부는 `claude plugin list` 로만 판단하십시오.** 설치하면 `~/.claude/plugins/` 에
+> 기록이 생기는데, 동시에 `~/.claude/settings.json` 의 `enabledPlugins` 에도 항목이 **함께**
+> 써집니다. 그래서 `settings.json` 에 항목이 있다는 것으로는 설치됐는지 안 됐는지 알 수 없습니다
+> — 선언만 해도 있고, 설치해도 있습니다.
+
+> ⚠️ **슬래시 `/plugin` 은 주 경로가 아닙니다.** 대화형 패널이라 환경에 따라 막혀 있습니다
+> ("`/plugin` isn't available in this environment"). 위의 셸 CLI 는 어디서나 동작합니다 —
+> 막히는 경로를 안내하면 안 됩니다.
+
+> **플러그인은 세션 시작 시점에 로드됩니다.** 설치 후 세션을 새로 열어야 합니다. 세션 중간에
+> 설치하면 `/devkit:pr` 같은 정식 이름만 잡히고 bare `/pr` 은 실패해, bare 이름 자체가 안 되는
+> 것으로 오해하기 쉽습니다.
 
 ## 커맨드
 
 | 커맨드 | 하는 일 |
 |---|---|
+| `/onboard` | 개발 환경을 진단하고 정상화합니다 (여러 번 실행해도 안전) |
 | `/new-app` | `app-template` 에서 새 앱 레포를 만듭니다 |
 | `/pr` | 논리 단위로 커밋 → AI 리뷰 → PR 생성 (머지는 안 함) |
 | `/pr-merge #12` | CI 통과를 기다린 뒤 **squash** 머지 → 브랜치 정리 → 로컬 main 갱신 |
@@ -98,11 +112,28 @@ plugins/devkit/
 ├── .claude-plugin/plugin.json      ← 매니페스트만
 ├── agents/pr-reviewer.md           ← /pr 이 호출하는 리뷰어 (읽기 전용)
 └── skills/
+    ├── onboard/SKILL.md            ← /onboard
     ├── new-app/SKILL.md            ← /new-app
     ├── pr/SKILL.md                 ← /pr
     ├── pr-merge/SKILL.md           ← /pr-merge
     └── done/SKILL.md               ← /done
 ```
+
+## `/onboard` 흐름
+
+```
+1. 진단 (읽기 전용)        도구 · gh 인증 · git 신원 · 플러그인 · 작업 공간
+2. 표 하나로 보고          통과한 것도 보여준다. ✓ 통과 / ✗ 막힘 / ⚠ 경고
+3. 확인받는다              전부 / 골라서 / 진단만
+4. 수리                    자동 가능한 것만. 브라우저 인증은 명령만 알려준다
+5. 재검증                  고친 것만. 플러그인은 새 세션에서 확인
+```
+
+**여러 번 실행해도 안전합니다.** 이미 된 것은 건드리지 않습니다.
+
+> ⚠️ **`/onboard` 로 최초 설치를 대체할 수 없습니다.** 플러그인이 없으면 `/onboard` 자체가
+> `Unknown command` 입니다. 위의 [설치](#설치) 두 줄은 팀 온보딩 문서에도 남아 있어야
+> 합니다. 이 커맨드가 맡는 것은 **설치 이후의 모든 것**과 이미 어긋난 환경의 정상화입니다.
 
 ## `/done` 이 남기는 것
 
@@ -144,11 +175,13 @@ plugins/devkit/skills/<커맨드명>/SKILL.md
 `version` 을 생략하면 **커밋 SHA 가 버전**이 되어 푸시만으로 전파됩니다. 이 레포가 Public 이라
 백그라운드 자동 업데이트도 인증 없이 동작합니다.
 
-즉시 받고 싶은 팀원은:
+즉시 받고 싶은 팀원은 셸에서:
 
+```bash
+claude plugin update devkit@survivors
 ```
-/plugin marketplace update
-```
+
+실행 후 **세션을 새로 열면** 적용됩니다 (`update --help` 의 `restart required to apply`).
 
 ### 어디에 두어야 하나
 
@@ -164,4 +197,4 @@ plugins/devkit/skills/<커맨드명>/SKILL.md
 |---|---|
 | [app-template](https://github.com/SurvivorsStudio/app-template) | 이 커맨드가 복제하는 원본 |
 | [core](https://github.com/SurvivorsStudio/core) | 앱 공통 기능 npm 패키지 |
-| [devops-docs](https://github.com/SurvivorsStudio/devops-docs) | 설계 근거·결정 기록 |
+| [devops-docs](https://github.com/SurvivorsStudio/devops-docs) | 설계 근거·결정 기록 (**Private** — 조직 멤버만) |
