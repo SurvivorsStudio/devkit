@@ -86,33 +86,57 @@ git config --show-origin --get user.email
 claude plugin list
 ```
 
-`devkit@survivors` 가 `✔ enabled` 로 보여야 합니다.
+> **미설치는 진단 대상이 아닙니다.** `/onboard` 가 돌고 있다는 것 자체가 devkit 이 설치·활성
+> 상태라는 뜻입니다. 여기서 볼 것은 **스코프**와 **버전**입니다.
 
-> ⚠️ **`.claude/settings.json` 에 등록돼 있는 것은 설치가 아닙니다.** `extraKnownMarketplaces` ·
-> `enabledPlugins` 는 "이 플러그인을 쓴다" 는 선언일 뿐이고 clone·설치를 트리거하지 않습니다.
-> 반드시 위 명령으로 확인하십시오 — 파일만 보고 "설치됨" 으로 판단하면 안 됩니다.
+| 항목 | 합격 기준 |
+|---|---|
+| Status | `✔ enabled` |
+| **Scope** | **`user`.** `project` 나 `local` 이면 **다른 폴더에서 안 잡힙니다** |
+| Version | 원격 최신과 일치 (아래) |
 
-최신인지도 봅니다. `version` 이 커밋 SHA 이므로 원격 최신과 비교할 수 있습니다:
+`Scope: project` 는 실제로 나옵니다 — `claude plugin install` 에 `--scope project` 를 주면
+그렇게 설치됩니다(기본값은 `user`). 이 경우 devops-docs 에서는 되고 앱 레포에서는 `/pr` 이
+없는 상태가 되어, 원인을 찾기 어렵습니다.
+
+> ⚠️ **`.claude/settings.json` 을 보고 판단하지 마십시오.** `enabledPlugins` 에 항목이 있어도
+> 설치된 것이 아닙니다(선언과 설치는 별개). 반대로 설치하면 그 파일에도 항목이 **함께** 써지므로,
+> 파일 존재 여부로는 어느 쪽도 알 수 없습니다. **판단은 `claude plugin list` 로만** 하십시오.
+
+버전 비교는 **길이가 다르므로 접두 비교**여야 합니다. `claude plugin list` 의 `version` 은 12자
+축약 SHA 이고 `git ls-remote` 는 40자를 줍니다 — 그대로 비교하면 최신인데도 항상 불일치합니다.
 
 ```bash
-git ls-remote https://github.com/SurvivorsStudio/devkit HEAD
+git ls-remote https://github.com/SurvivorsStudio/devkit HEAD      # 40자
+python3 -c "import json,os;d=json.load(open(os.path.expanduser('~/.claude/plugins/installed_plugins.json')));print([e['gitCommitSha'] for e in d['plugins']['devkit@survivors']])"
 ```
+
+`installed_plugins.json` 의 `gitCommitSha` 는 **40자 전체**라 그대로 비교할 수 있습니다.
+`claude plugin list --json` 에는 12자 `version` 만 들어 있습니다.
 
 ### E. 작업 공간
 
 `devops-docs` 를 찾아 상태를 봅니다.
 
+**`<경로>` 를 매번 명시하십시오.** `/onboard` 는 앱 레포에서도 불릴 수 있습니다 — cwd 를 쓰면
+엉뚱한 레포를 진단하게 됩니다.
+
 ```bash
 git -C <경로> rev-parse --show-toplevel
 git -C <경로> status --short
-git -C <경로> fetch -q origin && git -C <경로> log --oneline HEAD..origin/main
+git -C <경로> branch --show-current
+git -C <경로> fetch -q origin && git -C <경로> log --oneline main..origin/main
 ```
 
 | 항목 | 합격 기준 |
 |---|---|
 | 클론 존재 | 있어야 함. **없으면** 아래 참조 |
 | 워킹 트리 | 깨끗하면 좋음. 더러운 것 자체는 문제가 아니니 **보고만** 하십시오 |
+| 현재 브랜치 | `main` 이 아니면 작업 중입니다. **뒤짐 판정과 수리를 건너뛰십시오** |
 | origin 대비 | 뒤져 있으면 뒤진 커밋 수를 알려 줌 |
+
+> ⚠️ **`HEAD..origin/main` 로 비교하지 마십시오.** 작업 브랜치에 있으면 정상인데도 "뒤짐" 으로
+> 나옵니다. `main..origin/main` 을 쓰고, 현재 브랜치가 `main` 인지도 함께 확인하십시오.
 
 **`devops-docs` 가 아예 없을 수 있습니다.** 플러그인은 사용자 스코프라 레포 없이도 설치되므로,
 클론 전에 `/onboard` 를 부르는 사람이 있습니다. 그때는 **어디에 클론할지 물어본 뒤** 만듭니다:
@@ -131,9 +155,17 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 | 확인 | 명령 | 왜 문제인가 |
 |---|---|---|
 | `core` npm link 잔존 | `ls -l <앱>/node_modules/@survivorsstudio/core` 가 심볼릭 링크인지 | 커밋하면 **CI 가 없는 링크를 찾다 실패**합니다 |
-| 플러그인 구버전 | D 의 SHA 비교 | 새 커맨드가 안 잡히거나 옛 절차를 따릅니다 |
-| `settings.local.json` 이 추적됨 | `git check-ignore -v .claude/settings.local.json` | 개인 설정이 팀에 올라갑니다 |
+| 플러그인 구버전·스코프 | D 참조 | 새 커맨드가 안 잡히거나 옛 절차를 따릅니다 |
+| `settings.local.json` 이 **추적됨** | `git -C <경로> ls-files -- .claude/settings.local.json` | 개인 설정이 팀에 올라갑니다 |
 | 앱 레포 위치가 흩어짐 | `devops-docs` 와 같은 부모 폴더에 있는지 | `/pr` 의 승격 후보 비교가 로컬 앱 레포를 봅니다 |
+
+> ⚠️ **`git check-ignore` 로 "추적됨" 을 판단하지 마십시오.** man page 그대로입니다 —
+> *tracked files are not shown at all since they are not subject to exclude rules.* 즉 **실제로
+> 커밋돼 있는 경우와 파일이 아예 없는 경우가 똑같이 "출력 없음 + exit 1"** 입니다. 그대로 쓰면
+> 파일이 없는 레포에서 오탐이 납니다.
+>
+> 추적 여부는 `ls-files` 의 **출력 유무**로 봅니다(출력이 있으면 추적 중 = 문제).
+> `.gitignore` 에 패턴이 있는지는 별도로 `git check-ignore -v` 로 봅니다.
 
 ---
 
@@ -149,12 +181,15 @@ git clone https://github.com/SurvivorsStudio/devops-docs
   ✓ git · gh · claude
   ✓ GitHub 로그인 — babysean (조직 접근 OK)
   ✗ 토큰에 workflow 스코프 없음        → 앱 레포 첫 푸시가 거부됩니다
-  ✗ devkit 플러그인 미설치
-  ⚠ devops-docs 가 origin/main 보다 3개 뒤짐
+  ✗ devkit 이 project 스코프로 설치됨  → 앱 레포에서 /pr 이 안 잡힙니다
+  ⚠ devkit 이 3커밋 뒤짐
   ⚠ app-hansonjump 에 core npm link 가 남아 있음
 
-자동 수리 가능 2건 · 직접 하셔야 하는 것 1건 · 판단 필요 1건
+자동 수리 가능 1건 · 직접 하셔야 하는 것 2건 · 판단 필요 1건
 ```
+
+> ⚠️ **"플러그인 미설치" 를 보고하지 마십시오.** `/onboard` 가 돌고 있다는 것 자체가 설치됐다는
+> 뜻입니다(진단 D). 도달할 수 없는 상태를 예시로 흉내내면 팀원에게 모순된 보고를 줍니다.
 
 기호는 이렇게 씁니다: `✓` 통과 · `✗` 막힘(고쳐야 진행 불가) · `⚠` 경고(진행은 되지만 사고 위험).
 
@@ -172,17 +207,32 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 
 ### 자동으로 해도 되는 것
 
+**모든 경로를 명시하십시오.** cwd 에 의존하는 명령을 쓰면 앱 레포에서 `/onboard` 를 부른 사람의
+작업 브랜치를 건드립니다.
+
 | 문제 | 수리 | 세션 재시작 |
 |---|---|---|
-| 마켓플레이스 미등록 | `claude plugin marketplace add SurvivorsStudio/devkit` | 필요 |
-| 플러그인 미설치 | `claude plugin install devkit@survivors` | 필요 |
 | 플러그인 구버전 | `claude plugin update devkit@survivors` | 필요 |
-| `devops-docs` 뒤짐 | `git pull --ff-only origin main` | — |
-| `.done/` 없음 | `mkdir -p .done` | — |
-| git 신원 없음 | 이름·이메일을 **물어본 뒤** `git config` | — |
+| `devops-docs` 뒤짐 | `git -C <경로> pull --ff-only origin main` | — |
+| `.done/` 없음 | `mkdir -p <경로>/.done` | — |
+| git 신원 없음 | 이름·이메일을 **물어본 뒤** `git config --global user.name` · `user.email` | — |
+
+**`git pull` 전에 `git -C <경로> branch --show-current` 가 `main` 인지 확인하십시오.** `main` 이
+아니면 팀원이 작업 중입니다 — **수리하지 말고 보고만** 하십시오. 브랜치에서 fast-forward 가 되면
+작업 브랜치 포인터가 조용히 움직입니다.
 
 `--ff-only` 를 쓰십시오. 로컬 커밋이 있으면 머지 커밋을 만들지 않고 실패하며, 그때는 팀원에게
 넘기는 것이 맞습니다.
+
+> ⚠️ **git 신원은 `--global` 로 설정하십시오.** 스코프를 안 주면 그 레포에만 들어가서, 이어서
+> `/new-app` 이 만든 앱 레포의 첫 커밋에서 다시 `Please tell me who you are` 로 실패합니다.
+>
+> 단 **진단 C 에서 `includeIf "gitdir:…"` 가 걸려 있는 것으로 나왔다면 global 을 덮어쓰지
+> 마십시오.** 폴더별로 계정을 갈라 둔 사람입니다 — 보고만 하고 판단을 넘기십시오.
+
+> **플러그인 스코프가 `project`·`local` 인 경우는 자동 수리하지 마십시오.** 재설치가 필요하고
+> 기존 설치를 지우는 일이라, 어느 스코프를 원하는지 확인받아야 합니다. `--scope` 기본값이 `user`
+> 라는 것만 알리고 넘기십시오.
 
 ### 사람이 해야 하는 것 — 대신 실행하지 마십시오
 
@@ -190,7 +240,7 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 |---|---|
 | Node 22 미만 | `brew install node` (또는 nvm 으로 22 설치) |
 | gh 미로그인 | `gh auth login` — HTTPS + 브라우저, 스코프에 `repo`·`workflow` |
-| `workflow` 스코프 없음 | `gh auth refresh -h github.com -s workflow` |
+| `workflow` 스코프 없음 | `gh auth refresh -h github.com -s workflow` — **활성 계정에만 적용됩니다.** `gh api user -q .login` 으로 앱 레포를 만들 계정이 활성인지 먼저 확인시키십시오 (`refresh` 에는 `-u` 가 없어 `gh auth switch` 가 선행돼야 합니다) |
 | 조직 멤버 아님 | 초대를 요청하십시오. 초대 수락 전에는 앱 레포를 만들 수 없습니다 |
 | 활성 계정이 조직 접근 불가 | `gh auth switch --user <계정>` — 어느 계정이 맞는지 확인시킨 뒤 |
 | Xcode · Android Studio | 실기기 빌드가 필요해질 때. 미리 받을 이유가 없습니다 |
@@ -203,8 +253,18 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 넘기십시오:
 
 ```bash
-npm unlink @survivorsstudio/core && npm install
+npm install @survivorsstudio/core@latest
+git diff package.json package-lock.json      # 의존성이 남아 있는지 반드시 확인
 ```
+
+> ⚠️ **`npm unlink @survivorsstudio/core` 를 쓰지 마십시오.** `unlink` 는 `npm uninstall` 의
+> **별칭**입니다 — man page 그대로 *"It also removes the package from the dependencies … objects
+> in your package.json"* 이고 lock 파일까지 갱신합니다. 앱의 `"@survivorsstudio/core": "^1.0.0"`
+> 이 사라지고, 뒤이은 `npm install` 은 없는 의존성을 되살리지 않습니다. **막으려던 CI 실패를 더
+> 나쁜 형태로 커밋시킵니다.**
+>
+> 링크만 끊고 의존성을 지키려면 위처럼 레지스트리 버전으로 **덮어쓰십시오.** 굳이 `unlink` 를
+> 써야 한다면 `--no-save` 가 필수입니다.
 
 ## 5단계 — 재검증
 
