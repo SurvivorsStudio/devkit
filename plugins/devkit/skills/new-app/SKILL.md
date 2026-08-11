@@ -47,47 +47,113 @@ gh repo view SurvivorsStudio/<슬러그> 2>&1 | head -3   # 이미 있으면 중
 
 ## 3단계 — 생성
 
-작업 디렉터리는 기존 앱 레포들과 나란히 두십시오 (보통 `~/Project/`).
+### 어디에 만드는가 — 묻지 말고 계산하십시오
+
+앱 레포는 **`devops-docs` 와 같은 부모 폴더**에 형제로 둡니다. 그 폴더의 **이름은 사람마다
+다릅니다** (`~/Project`, `~/Personal`, `D:\work` …). **경로를 하드코딩하지 마십시오.**
+
+| 지금 위치 | 만들 곳 |
+|---|---|
+| `devops-docs` 안 (보통) | **그 부모 폴더** |
+| 다른 레포 안 (`app-*`·`core`) | 같은 규칙 — 그 레포의 부모 폴더 |
+| git 레포가 아님 | **현재 폴더.** 단 형제에 `devops-docs` 가 보이는지 확인하고, 아니면 **물어보십시오** |
+
+`gh repo create --clone` 은 **현재 폴더 밑에** 클론합니다. 그러니 자리를 먼저 잡습니다.
+**이동한 뒤에 확인합니다** — 순서가 뒤집히면 확인이 무의미해집니다.
+
+```bash
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -n "$ROOT" ] && cd "$ROOT/.."          # 레포 안이었으면 부모로. 아니면 현재 폴더 그대로
+pwd                                       # 여기에 만듭니다
+git rev-parse --show-toplevel 2>/dev/null && echo "중단 — 아직 레포 안입니다" || echo "OK"
+```
+
+> **`ROOT` 를 거쳐 가는 이유가 있습니다.** `cd "$(git rev-parse --show-toplevel)/.."` 를 한 줄로
+> 쓰면 레포 **바깥**에서 실행됐을 때 명령 치환이 빈 문자열이 되어 `cd "/.."` — 즉 **루트로
+> 이동**합니다. 그 자리에서 `gh repo create --clone` 이 돌면 OS 마다 다르게 깨집니다.
+
+마지막 줄이 `OK` 가 아니면 **멈추십시오.** 레포가 중첩된 자리입니다. 팀원에게 어디에 만들지
+물어보십시오.
+
+> ⚠️ **`devops-docs` 안에 만들지 마십시오.** 문서 레포 안에 앱 레포가 중첩되면 바깥 `git status`
+> 가 앱 폴더를 미추적으로 물고, 문서 커밋에 앱이 딸려 들어갈 수 있습니다. `devops-docs` 는
+> **코드가 없는 레포**라는 것이 그 레포의 절대 규칙입니다.
+
+`OK` 를 받은 자리에서 만듭니다.
 
 ```bash
 gh repo create SurvivorsStudio/<슬러그> \
   --template SurvivorsStudio/app-template --private --clone
+cd <슬러그>
 ```
+
+**어디에 만들었는지 절대경로로 보고하십시오.** 팀원은 다음 명령을 그 폴더에서 실행해야 합니다.
 
 ### 토큰 치환
 
 `TEMPLATE.md` 는 **반드시 제외**합니다. 그 안의 토큰 표가 자기 자신을 치환해 문서가 깨집니다.
 
-```bash
-node -e '
-const fs=require("fs"), path=require("path");
-const map={
-  "{{APP_NAME}}":        process.argv[1],
-  "{{APP_ID}}":          process.argv[2],
-  "{{APP_SLUG}}":        process.argv[3],
-  "{{APP_DESCRIPTION}}": process.argv[4],
+**`node -e '…'` 로 인라인 실행하지 마십시오.** 홑따옴표로 여러 줄을 감싸는 방식은 Windows
+셸(CMD·PowerShell)에서 인용이 깨집니다. **Write 도구로 스크립트 파일을 만들어 실행하십시오** —
+인자만 겹따옴표로 넘기면 어느 셸에서도 같게 동작합니다.
+
+**스크립트는 앱 레포 바깥, 즉 부모 폴더에 만듭니다.** 레포 안에 두면 지우는 것을 잊었을 때
+첫 커밋에 딸려 들어갑니다. 바깥에 두면 그 위험이 아예 없습니다.
+
+`../replace-tokens.mjs`:
+
+```js
+import fs from "node:fs";
+import path from "node:path";
+const [name, id, slug, desc] = process.argv.slice(2);   // 스크립트 파일이므로 slice(2)
+if (!fs.existsSync("capacitor.config.ts") || !fs.existsSync("TEMPLATE.md")) {
+  console.error("중단 — 앱 레포 루트가 아닙니다. cwd:", process.cwd());
+  process.exit(1);                                      // 엉뚱한 레포를 고쳐 쓰는 것을 막는다
+}
+const map = {
+  "{{APP_NAME}}":        name,
+  "{{APP_ID}}":          id,
+  "{{APP_SLUG}}":        slug,
+  "{{APP_DESCRIPTION}}": desc,
 };
-const skipDir=new Set(["node_modules",".git","dist","ios","android"]);
-const skipFile=new Set(["TEMPLATE.md"]);
-(function walk(d){
-  for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+const skipDir = new Set(["node_modules", ".git", "dist", "ios", "android"]);
+const skipFile = new Set(["TEMPLATE.md"]);              // 토큰 표가 자기 자신을 치환한다
+(function walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     if (skipDir.has(e.name)) continue;
-    const p=path.join(d,e.name);
+    const p = path.join(d, e.name);
     if (e.isDirectory()) { walk(p); continue; }
     if (skipFile.has(e.name) || !/\.(ts|json|html|md|css|yml)$/.test(e.name)) continue;
-    let t=fs.readFileSync(p,"utf8"); const o=t;
-    for (const [k,v] of Object.entries(map)) t=t.split(k).join(v);
-    if (t!==o) { fs.writeFileSync(p,t); console.log("  "+path.relative(".",p)); }
+    let t = fs.readFileSync(p, "utf8"); const o = t;
+    for (const [k, v] of Object.entries(map)) t = t.split(k).join(v);
+    if (t !== o) { fs.writeFileSync(p, t); console.log("  " + path.relative(".", p)); }
   }
 })(".");
-' "<앱이름>" "<번들ID>" "<슬러그>" "<설명>"
+```
+
+**앱 레포 루트에서** 실행합니다. 위 가드가 그 자리인지 확인해 줍니다.
+
+```bash
+node ../replace-tokens.mjs "<앱이름>" "<번들ID>" "<슬러그>" "<설명>"
+rm ../replace-tokens.mjs
 ```
 
 잔여 토큰이 0인지 확인합니다. 하나라도 남으면 멈추고 원인을 찾으십시오.
 
+> ⚠️ **`TEMPLATE.md` 는 세지 마십시오.** 그 파일에는 토큰이 **의도적으로 남아 있습니다** —
+> 토큰 표가 문서의 내용이기 때문입니다. 확인에서 제외하지 않으면 "잔여 토큰 0" 이 영원히
+> 달성되지 않고, 4단계 체크리스트에서 매번 걸립니다.
+
+**Grep 도구로 확인하십시오** — 패턴 `\{\{APP_`, `glob` 은 `!(TEMPLATE.md)` 가 안 되므로
+결과에서 `TEMPLATE.md` 행만 눈으로 걸러냅니다. 셸을 타지 않아 Windows 에서도 같습니다.
+셸을 쓴다면 이것과 동등합니다:
+
 ```bash
-grep -rn "{{APP_" --include="*.ts" --include="*.json" --include="*.html" --include="*.md" . | grep -v node_modules
+grep -rn "{{APP_" --include="*.ts" --include="*.json" --include="*.html" --include="*.md" \
+  --exclude=TEMPLATE.md --exclude-dir=node_modules .
 ```
+
+`TEMPLATE.md` 를 뺀 결과가 **비어 있어야** 통과입니다.
 
 ### 설치와 빌드
 
@@ -114,6 +180,11 @@ mkdir -p .done
 
 Xcode 나 Java 가 없어도 `cap add` 는 동작합니다. 실제 빌드에만 필요합니다.
 
+> **Windows 에서도 `cap add ios` 를 그대로 실행하십시오.** `ios/` 폴더가 레포에 들어 있어야
+> 나중에 맥에서 그대로 빌드할 수 있습니다. 다만 두 가지를 팀원에게 알리십시오 — `pod install`
+> 은 macOS 에서만 돌아 건너뛰어지고(`ios/App/Pods/` 는 gitignore 대상이라 무해합니다),
+> **iOS 빌드·시뮬레이터 확인은 맥이 있어야** 합니다. Android 는 Windows 에서 전부 됩니다.
+
 ### 앱 레포용으로 문서 손보기
 
 템플릿 문구가 그대로 남아 어색한 곳을 고칩니다.
@@ -136,7 +207,8 @@ git push origin main
 
 여기까지 하고 **직접 확인한 뒤** 보고하십시오. 확인 없이 "완료"라고 하지 마십시오.
 
-- [ ] 잔여 토큰 0
+- [ ] 잔여 토큰 0 — **`TEMPLATE.md` 는 제외.** 그 파일의 토큰은 의도된 것입니다
+- [ ] `replace-tokens.mjs` 가 레포 안에 남아 있지 않은지
 - [ ] `npm run typecheck` · `npm run build` 통과
 - [ ] 번들 ID 가 `ios/App/App.xcodeproj/project.pbxproj` 와 `android/app/build.gradle` 에 박혔는지
 - [ ] `git status` 가 깨끗하고 origin 과 동기화됨
@@ -163,6 +235,9 @@ git push origin main
 
 이 커맨드의 범위는 **레포 생성과 배선 확인까지**입니다.
 
+- **`devops-docs`(또는 다른 레포) 안에 앱을 만들지 마십시오.** 3단계에서 부모 폴더로 나갑니다
+- **작업 폴더 경로를 하드코딩하지 마십시오.** `~/Project` 같은 이름은 사람마다 다릅니다 —
+  `git rev-parse --show-toplevel` 에서 계산합니다
 - **앱 기능을 만들지 마십시오.** 게임 로직·화면·에셋은 사용자가 만듭니다
 - **화면 방향을 고정하지 마십시오.** 각 앱이 정합니다
 - **CI·릴리스·서명 워크플로를 추가하지 마십시오.** 템플릿에 든 `ci.yml`(ubuntu, typecheck + build)이
@@ -175,6 +250,9 @@ git push origin main
 | 증상 | 확인 |
 |---|---|
 | `gh repo create` 권한 오류 | `gh auth status` · 조직 멤버 권한 |
-| 잔여 토큰이 남음 | 치환 대상 확장자 목록에 그 파일이 있는지 |
+| 앱이 `devops-docs` 안에 생겼음 | 3단계의 자리잡기를 건너뛰었습니다. **바깥으로 옮기고**(`mv`) 문서 레포의 `git status` 가 깨끗한지 확인 |
+| `gh repo create` 가 루트나 엉뚱한 곳에서 돌았음 | `cd "$(git rev-parse …)/.."` 를 한 줄로 썼습니까. 3단계의 `ROOT` 방식을 쓰십시오 |
+| `중단 — 앱 레포 루트가 아닙니다` | 치환 스크립트를 앱 레포 밖에서 돌렸습니다. `cd <슬러그>` 후 재실행 |
+| 잔여 토큰이 남음 | `TEMPLATE.md` 를 세고 있지 않은지 **먼저** 확인. 그게 아니면 치환 대상 확장자 목록에 그 파일이 있는지. **`node -e '…'` 를 인라인으로 실행했다면** Windows 셸에서 인용이 깨진 것입니다 |
 | Android 빌드에서 패키지명 오류 | 번들 ID 에 하이픈이 들어갔는지 |
 | CI 빨강 | 로컬에서 `npm ci && npm run typecheck && npm run build` 재현 |

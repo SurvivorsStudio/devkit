@@ -44,6 +44,52 @@ node -v; git --version; gh --version; claude --version
 
 메이저 버전만 뽑아 비교하십시오: `node -v | sed 's/v\([0-9]*\).*/\1/'`
 
+### A-2. Windows 인 경우에만 — 셸 확인
+
+**이 항목이 이 커맨드에서 가장 먼저 볼 것입니다.** 여기가 틀리면 나머지 진단 명령 자체가
+실행되지 않습니다. macOS·Linux·WSL 이면 건너뛰십시오.
+
+devkit 의 커맨드들은 **bash 스니펫**으로 쓰여 있습니다. 네이티브 Windows 에서 Claude Code 는
+**Git for Windows 가 있으면 Git Bash 로**, 없으면 **PowerShell 로** 셸 명령을 실행합니다.
+PowerShell 로 떨어지면 `mkdir -p`·`grep -r`·`$(...)`·`sed` 가 전부 깨집니다.
+
+> 근거: [Advanced setup — Set up on Windows](https://code.claude.com/docs/en/setup#set-up-on-windows).
+> "Without Git for Windows, Claude Code runs shell commands via the PowerShell tool." 같은 문서가
+> Git Bash 경로를 못 찾을 때 `CLAUDE_CODE_GIT_BASH_PATH` 를 쓰라고 안내합니다.
+
+```bash
+uname -s              # MINGW64_NT-… = Git Bash / Linux = WSL. 실패하면 PowerShell 입니다
+git --version         # git version 2.x.windows.1 → Git for Windows 설치됨
+```
+
+| 결과 | 판정 |
+|---|---|
+| `MINGW64_NT-…` | ✓ Git Bash. 그대로 진행합니다 |
+| `Linux` + Windows 사용자 | ✓ WSL. 가장 매끄럽습니다. **단 레포는 WSL 파일시스템 안에 두어야** 합니다 (`/mnt/c/…` 는 느립니다) |
+| 명령이 인식되지 않음 | ✗ **PowerShell 입니다.** Git for Windows 를 설치하고 **세션을 새로 열어야** 합니다. 그 전에는 다른 커맨드도 신뢰할 수 없습니다 |
+
+Git for Windows 는 있는데 Claude 가 못 찾는 경우가 있습니다. 그때는 `settings.json` 에 경로를
+박습니다 (`.claude/settings.json` 이 아니라 **사용자 설정** `~/.claude/settings.json`):
+
+```json
+{ "env": { "CLAUDE_CODE_GIT_BASH_PATH": "C:\\Program Files\\Git\\bin\\bash.exe" } }
+```
+
+**Git Bash 가 있는데도 PowerShell 로 실행되는 경우가 있습니다.** Git for Windows 가 깔린
+환경에도 PowerShell 도구가 점진적으로 배포되는 중입니다. devkit 은 bash 를 전제하므로 그때는
+껐다고 보고 진행하지 말고 아래로 명시적으로 끄십시오.
+
+```json
+{ "env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "0" } }
+```
+
+> **devkit 은 PowerShell 을 지원하지 않습니다.** 개별 명령에 PowerShell 대안을 끼워 넣지
+> 마십시오 — `mkdir` 한 줄이 돌아도 `$(...)`·`grep -rn`·`check-ignore && ||` 에서 막힙니다.
+> 부분 대안은 "PowerShell 로도 된다" 는 오해만 만듭니다. **Git Bash 나 WSL 로 가는 것이 답입니다.**
+
+> ⚠️ **Windows 팀원에게 iOS 를 약속하지 마십시오.** Android 개발·빌드는 전부 됩니다. iOS 는
+> `npx cap add ios` 로 폴더를 만드는 것까지만 되고, **빌드·시뮬레이터·서명은 맥이 필요합니다.**
+
 ### B. GitHub 인증
 
 ```bash
@@ -108,8 +154,12 @@ claude plugin list
 
 ```bash
 git ls-remote https://github.com/SurvivorsStudio/devkit HEAD      # 40자
-python3 -c "import json,os;d=json.load(open(os.path.expanduser('~/.claude/plugins/installed_plugins.json')));print([e['gitCommitSha'] for e in d['plugins']['devkit@survivors']])"
+node -p "JSON.parse(require('fs').readFileSync(require('os').homedir()+'/.claude/plugins/installed_plugins.json','utf8')).plugins['devkit@survivors'].map(e=>e.gitCommitSha)"
 ```
+
+> **`python3` 를 쓰지 마십시오.** Windows 에는 없는 경우가 많습니다(있어도 스토어 스텁이 뜹니다).
+> Node 는 진단 A 에서 이미 필수로 확인한 도구이므로 어느 OS 에서나 있습니다. `os.homedir()` 이
+> `~` 확장 없이도 홈을 찾아 주므로 셸 차이도 타지 않습니다.
 
 `installed_plugins.json` 의 `gitCommitSha` 는 **40자 전체**라 그대로 비교할 수 있습니다.
 `claude plugin list --json` 에는 12자 `version` 만 들어 있습니다.
@@ -148,13 +198,18 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 경로를 짐작하지 마십시오. 앱 레포들과 같은 부모 폴더에 두어야 하므로 기존 `app-*` 이 있으면
 그 옆을 제안하고, 없으면 물어봅니다.
 
+> **작업 폴더 이름은 규칙이 없습니다.** `~/Project` · `~/Personal` · `D:\work` 무엇이든 됩니다.
+> 규칙은 **`devops-docs` 와 `app-*` 과 `core` 가 같은 부모 폴더에 형제로 있다**는 것 하나입니다
+> (`/new-app` 과 `pr-reviewer` 가 그 관계로 서로를 찾습니다). 이름을 바꾸라고 하지 마십시오 —
+> **형제 관계만 확인하십시오.**
+
 ### F. 이미 세팅했던 사람에게만 나타나는 것
 
 새 팀원에게는 해당 없고, **한동안 쓰다 어긋난 환경**에서 나오는 항목입니다.
 
 | 확인 | 명령 | 왜 문제인가 |
 |---|---|---|
-| `core` npm link 잔존 | `ls -l <앱>/node_modules/@survivorsstudio/core` 가 심볼릭 링크인지 | 커밋하면 **CI 가 없는 링크를 찾다 실패**합니다 |
+| `core` npm link 잔존 | 아래 스니펫 | 커밋하면 **CI 가 없는 링크를 찾다 실패**합니다 |
 | 플러그인 구버전·스코프 | D 참조 | 새 커맨드가 안 잡히거나 옛 절차를 따릅니다 |
 | `settings.local.json` 이 **추적됨** | `git -C <경로> ls-files -- .claude/settings.local.json` | 개인 설정이 팀에 올라갑니다 |
 | 앱 레포 위치가 흩어짐 | `devops-docs` 와 같은 부모 폴더에 있는지 | `/pr` 의 승격 후보 비교가 로컬 앱 레포를 봅니다 |
@@ -166,6 +221,26 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 >
 > 추적 여부는 `ls-files` 의 **출력 유무**로 봅니다(출력이 있으면 추적 중 = 문제).
 > `.gitignore` 에 패턴이 있는지는 별도로 `git check-ignore -v` 로 봅니다.
+
+`core` 링크 판정은 이 스니펫을 씁니다. `<앱>` 자리에 앱 레포 경로를 넣으십시오.
+
+```bash
+node -p "const f=require('fs'),p='<앱>/node_modules/@survivorsstudio/core';f.existsSync(p)?f.lstatSync(p).isSymbolicLink():'설치 안 됨'"
+```
+
+`true` 면 링크가 남아 있는 것이고, `false` 면 정상 설치, `설치 안 됨` 이면 `npm install` 전입니다.
+
+> **경로는 `/` 로 쓰십시오.** Windows 절대경로를 그대로 붙여넣으면 `'C:\Users\hong\app-x'` 의
+> `\U`·`\h` 가 JS 문자열 이스케이프로 먹혀 경로가 `C:Usershongapp-x` 로 뭉개집니다. 그러면
+> "링크 아님" 이 아니라 **없는 경로 오류**가 나서 원인을 엉뚱한 데서 찾게 됩니다.
+> `C:/Users/hong/app-x` 로 쓰면 Windows 에서도 그대로 동작합니다.
+
+> **`existsSync` 가드를 빼지 마십시오.** `lstatSync` 는 경로가 없으면 `ENOENT` 로 **스택
+> 트레이스를 뱉고 죽습니다.** `npm install` 전이라는 정상 상황이 진단 실패로 보입니다.
+
+> **`ls -l` 로 심볼릭 링크를 판정하지 마십시오.** Windows 의 `npm link` 는 심볼릭 링크가 아니라
+> **디렉터리 정션(junction)** 을 만들고, Git Bash 의 `ls -l` 은 그것을 평범한 폴더로 보여줍니다.
+> Node 의 `lstat` 은 정션도 링크로 잡아내므로 위 스니펫이 세 OS 에서 같게 동작합니다.
 
 ---
 
@@ -238,7 +313,8 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 
 | 문제 | 알려줄 명령 |
 |---|---|
-| Node 22 미만 | `brew install node` (또는 nvm 으로 22 설치) |
+| Node 22 미만 | macOS `brew install node` · Windows `winget install OpenJS.NodeJS.LTS` · Linux/WSL nvm 으로 22 |
+| **Windows 에 Git Bash 없음** | [Git for Windows](https://git-scm.com/downloads/win) 설치 → **세션 재시작.** 진단 A-2 참조. 설치 자체는 사람이 합니다 |
 | gh 미로그인 | `gh auth login` — HTTPS + 브라우저, 스코프에 `repo`·`workflow` |
 | `workflow` 스코프 없음 | `gh auth refresh -h github.com -s workflow` — **활성 계정에만 적용됩니다.** `gh api user -q .login` 으로 앱 레포를 만들 계정이 활성인지 먼저 확인시키십시오 (`refresh` 에는 `-u` 가 없어 `gh auth switch` 가 선행돼야 합니다) |
 | 조직 멤버 아님 | 초대를 요청하십시오. 초대 수락 전에는 앱 레포를 만들 수 없습니다 |
@@ -308,3 +384,5 @@ git diff package.json package-lock.json      # 의존성이 남아 있는지 반
 | `git pull --ff-only` 실패 | 로컬 커밋이 있습니다. 자동으로 풀지 말고 팀원에게 넘기십시오 |
 | `node -v` 가 없음 | 설치 안내만. nvm 사용자는 셸을 새로 열어야 할 수 있습니다 |
 | 진단은 통과인데 커맨드가 안 잡힘 | 세션을 새로 열었는지. 플러그인 신뢰 확인을 승인했는지 |
+| Windows 에서 `mkdir -p`·`grep -r`·`$(...)` 가 깨짐 | PowerShell 로 실행되고 있습니다. 진단 A-2 |
+| Windows 에서 `claude plugin install` 이 느리거나 실패 | `/mnt/c/…` 나 OneDrive 로 동기화되는 폴더에서 작업하는지. 동기화 폴더 밖으로 옮기십시오 |

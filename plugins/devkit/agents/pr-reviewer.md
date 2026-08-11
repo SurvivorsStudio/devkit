@@ -61,11 +61,33 @@ git log --format='%h %s' $(git merge-base HEAD origin/main)..HEAD
 이 브랜치가 **유틸리티성 코드를 새로 만들었다면** 다른 앱에 같은 것이 있는지 확인한다.
 사람이 기억하는 데 맡기면 놓치는 항목이므로, 리뷰에서 기계적으로 본다.
 
+다른 앱 레포는 **이 레포의 형제 폴더**에 있다. **경로를 하드코딩하지 마라** — 작업 폴더 이름은
+사람마다 다르다(`~/Project`, `~/Personal`, `D:\work` …).
+
 ```bash
 ls node_modules/@survivorsstudio/core/dist/types/           # core 에 이미 있는가
-ls -d ~/Project/app-*/ 2>/dev/null                          # 로컬에 다른 앱이 있는가
-grep -rln "<함수명 또는 개념>" ~/Project/app-*/src 2>/dev/null
+WS="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"     # 작업 폴더 = 이 레포의 부모
+APPS="$(find "$WS" -maxdepth 1 -type d -name 'app-*' ! -name 'app-template' | sort)"
+echo "비교한 앱: $(printf '%s' "$APPS" | grep -c .) 개"     # 템플릿은 앱이 아니므로 뺀다
+printf '%s\n' "$APPS" | while IFS= read -r d; do
+  [ -n "$d" ] || continue
+  echo "$d"
+  grep -rln "<함수명 또는 개념>" "$d/src" 2>/dev/null
+done
 ```
+
+> ⚠️ **`app-template` 을 다른 앱으로 세지 마라.** 이름이 `app-` 으로 시작하지만 그건 모든 앱의
+> 원본이다. 템플릿에 있는 코드를 "다른 앱에도 있다" 로 보고하면 **없는 중복을 근거로 승격을
+> 권하게 된다.** 위의 `! -name 'app-template'` 이 그 역할이다.
+
+> **`for d in "$WS"/app-*/` 로 쓰지 마라.** 맞는 것이 없을 때 bash 는 글롭을 **리터럴로 남겨**
+> `…/app-*/` 라는 없는 경로를 앱으로 출력하고, zsh 는 `no matches found` 로 **블록 전체를
+> 중단**한다(실측). 루프 안에 `[ -d "$d" ]` 가드를 넣어도 **zsh 는 못 막는다** — 글롭 확장
+> 단계에서 이미 실패하므로 루프 본문에 들어오지도 못한다. `shopt -s nullglob` 은 bash 전용이다.
+> `find` 는 맞는 것이 없으면 조용히 빈 출력을 주므로 세 셸에서 같게 동작한다.
+
+**`비교한 앱: 0 개`** 이면 팀원이 앱을 다른 곳에 흩어 두었거나 아직 하나뿐인 것이다.
+없는 것을 근거로 승격을 권하지 마라 — 아래 표의 "확인 불가" 로 보고한다.
 
 | 발견 | 보고 방식 |
 |---|---|
