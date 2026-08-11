@@ -47,12 +47,41 @@ gh repo view SurvivorsStudio/<슬러그> 2>&1 | head -3   # 이미 있으면 중
 
 ## 3단계 — 생성
 
-작업 디렉터리는 기존 앱 레포들과 나란히 두십시오 (보통 `~/Project/`).
+### 어디에 만드는가 — 묻지 말고 계산하십시오
+
+앱 레포는 **`devops-docs` 와 같은 부모 폴더**에 형제로 둡니다. 그 폴더의 **이름은 사람마다
+다릅니다** (`~/Project`, `~/Personal`, `D:\work` …). **경로를 하드코딩하지 마십시오.**
 
 ```bash
+git rev-parse --show-toplevel        # 지금 어느 레포 안인가
+```
+
+| 지금 위치 | 만들 곳 |
+|---|---|
+| `devops-docs` 안 (보통) | **그 부모 폴더.** `cd "$(git rev-parse --show-toplevel)/.."` |
+| 다른 레포 안 (`app-*`·`core`) | 같은 규칙 — 그 레포의 부모 폴더 |
+| git 레포가 아님 | 현재 폴더. 단 형제에 `devops-docs` 가 보이는지 확인하고, 아니면 **물어보십시오** |
+
+만들기 직전에 **그 자리가 git 레포 바깥인지** 확인합니다. 여기서 한 번 막으면 되돌릴 일이 없습니다.
+
+```bash
+git rev-parse --show-toplevel 2>/dev/null && echo "중단 — 레포 안입니다" || echo "OK"
+```
+
+> ⚠️ **`devops-docs` 안에 만들지 마십시오.** 문서 레포 안에 앱 레포가 중첩되면 바깥 `git status`
+> 가 앱 폴더를 미추적으로 물고, 문서 커밋에 앱이 딸려 들어갈 수 있습니다. `devops-docs` 는
+> **코드가 없는 레포**라는 것이 그 레포의 절대 규칙입니다.
+
+`gh repo create --clone` 은 **현재 폴더 밑에** 클론합니다. 그러니 `cd` 가 먼저입니다.
+
+```bash
+cd "$(git rev-parse --show-toplevel)/.."
 gh repo create SurvivorsStudio/<슬러그> \
   --template SurvivorsStudio/app-template --private --clone
+cd <슬러그>
 ```
+
+**어디에 만들었는지 절대경로로 보고하십시오.** 팀원은 다음 명령을 그 폴더에서 실행해야 합니다.
 
 ### 토큰 치환
 
@@ -163,6 +192,9 @@ git push origin main
 
 이 커맨드의 범위는 **레포 생성과 배선 확인까지**입니다.
 
+- **`devops-docs`(또는 다른 레포) 안에 앱을 만들지 마십시오.** 3단계에서 부모 폴더로 나갑니다
+- **작업 폴더 경로를 하드코딩하지 마십시오.** `~/Project` 같은 이름은 사람마다 다릅니다 —
+  `git rev-parse --show-toplevel` 에서 계산합니다
 - **앱 기능을 만들지 마십시오.** 게임 로직·화면·에셋은 사용자가 만듭니다
 - **화면 방향을 고정하지 마십시오.** 각 앱이 정합니다
 - **CI·릴리스·서명 워크플로를 추가하지 마십시오.** 템플릿에 든 `ci.yml`(ubuntu, typecheck + build)이
@@ -175,6 +207,7 @@ git push origin main
 | 증상 | 확인 |
 |---|---|
 | `gh repo create` 권한 오류 | `gh auth status` · 조직 멤버 권한 |
+| 앱이 `devops-docs` 안에 생겼음 | `cd ..` 를 빠뜨렸습니다. **바깥으로 옮기고**(`mv`) 문서 레포의 `git status` 가 깨끗한지 확인 |
 | 잔여 토큰이 남음 | 치환 대상 확장자 목록에 그 파일이 있는지 |
 | Android 빌드에서 패키지명 오류 | 번들 ID 에 하이픈이 들어갔는지 |
 | CI 빨강 | 로컬에서 `npm ci && npm run typecheck && npm run build` 재현 |

@@ -61,11 +61,24 @@ git log --format='%h %s' $(git merge-base HEAD origin/main)..HEAD
 이 브랜치가 **유틸리티성 코드를 새로 만들었다면** 다른 앱에 같은 것이 있는지 확인한다.
 사람이 기억하는 데 맡기면 놓치는 항목이므로, 리뷰에서 기계적으로 본다.
 
+다른 앱 레포는 **이 레포의 형제 폴더**에 있다. **경로를 하드코딩하지 마라** — 작업 폴더 이름은
+사람마다 다르다(`~/Project`, `~/Personal`, `D:\work` …).
+
 ```bash
 ls node_modules/@survivorsstudio/core/dist/types/           # core 에 이미 있는가
-ls -d ~/Project/app-*/ 2>/dev/null                          # 로컬에 다른 앱이 있는가
-grep -rln "<함수명 또는 개념>" ~/Project/app-*/src 2>/dev/null
+WS="$(cd "$(git rev-parse --show-toplevel)/.." && pwd)"     # 작업 폴더 = 이 레포의 부모
+for d in "$WS"/app-*/; do
+  case "$d" in */app-template/) continue ;; esac            # 템플릿은 앱이 아니다
+  echo "$d"
+  grep -rln "<함수명 또는 개념>" "$d/src" 2>/dev/null
+done
 ```
+
+> ⚠️ **`app-template` 을 다른 앱으로 세지 마라.** `app-*` 글롭에 걸리지만 그건 모든 앱의 원본이다.
+> 템플릿에 있는 코드를 "다른 앱에도 있다" 로 보고하면 **없는 중복을 근거로 승격을 권하게 된다.**
+
+`$WS` 밑에 `app-*` 이 없으면 **팀원이 앱을 다른 곳에 흩어 두었거나 아직 하나뿐인 것이다.**
+없는 것을 근거로 승격을 권하지 마라 — 아래 표의 "확인 불가" 로 보고한다.
 
 | 발견 | 보고 방식 |
 |---|---|
