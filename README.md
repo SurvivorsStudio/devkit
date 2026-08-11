@@ -45,6 +45,7 @@ claude plugin list          # devkit@survivors ✔ enabled
 
 | 커맨드 | 하는 일 |
 |---|---|
+| `/onboard` | 개발 환경을 진단하고 정상화합니다 (여러 번 실행해도 안전) |
 | `/new-app` | `app-template` 에서 새 앱 레포를 만듭니다 |
 | `/pr` | 논리 단위로 커밋 → AI 리뷰 → PR 생성 (머지는 안 함) |
 | `/pr-merge #12` | CI 통과를 기다린 뒤 **squash** 머지 → 브랜치 정리 → 로컬 main 갱신 |
@@ -108,11 +109,28 @@ plugins/devkit/
 ├── .claude-plugin/plugin.json      ← 매니페스트만
 ├── agents/pr-reviewer.md           ← /pr 이 호출하는 리뷰어 (읽기 전용)
 └── skills/
+    ├── onboard/SKILL.md            ← /onboard
     ├── new-app/SKILL.md            ← /new-app
     ├── pr/SKILL.md                 ← /pr
     ├── pr-merge/SKILL.md           ← /pr-merge
     └── done/SKILL.md               ← /done
 ```
+
+## `/onboard` 흐름
+
+```
+1. 진단 (읽기 전용)        도구 · gh 인증 · git 신원 · 플러그인 · 작업 공간
+2. 표 하나로 보고          통과한 것도 보여준다. ✓ 통과 / ✗ 막힘 / ⚠ 경고
+3. 확인받는다              전부 / 골라서 / 진단만
+4. 수리                    자동 가능한 것만. 브라우저 인증은 명령만 알려준다
+5. 재검증                  고친 것만. 플러그인은 새 세션에서 확인
+```
+
+**여러 번 실행해도 안전합니다.** 이미 된 것은 건드리지 않습니다.
+
+> ⚠️ **`/onboard` 로 최초 설치를 대체할 수 없습니다.** 플러그인이 없으면 `/onboard` 자체가
+> `Unknown command` 입니다. 위의 설치 두 줄은 `devops-docs/02_팀원_온보딩.md` 에 남아 있어야
+> 합니다. 이 커맨드가 맡는 것은 **설치 이후의 모든 것**과 이미 어긋난 환경의 정상화입니다.
 
 ## `/done` 이 남기는 것
 
@@ -156,6 +174,8 @@ plugins/devkit/skills/<커맨드명>/SKILL.md
 
 즉시 받고 싶은 팀원은 셸에서:
 
+```bash
+claude plugin update devkit@survivors
 ```
 
 실행 후 **세션을 새로 열면** 적용됩니다 (`update --help` 의 `restart required to apply`).
@@ -174,6 +194,4 @@ plugins/devkit/skills/<커맨드명>/SKILL.md
 |---|---|
 | [app-template](https://github.com/SurvivorsStudio/app-template) | 이 커맨드가 복제하는 원본 |
 | [core](https://github.com/SurvivorsStudio/core) | 앱 공통 기능 npm 패키지 |
-```bash
-claude plugin update devkit@survivors
 | [devops-docs](https://github.com/SurvivorsStudio/devops-docs) | 설계 근거·결정 기록 |
