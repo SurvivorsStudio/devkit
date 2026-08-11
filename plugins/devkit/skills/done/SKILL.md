@@ -36,7 +36,7 @@ git rev-parse --show-toplevel        # 레포 루트
 git 레포가 아니면 현재 디렉터리를 씁니다. `.done/` 이 없으면 만듭니다:
 
 ```bash
-mkdir -p "<루트>/.done"          # PowerShell: New-Item -ItemType Directory -Force <루트>\.done
+mkdir -p "<루트>/.done"
 ```
 
 ## 2단계 — gitignore 확인
@@ -109,8 +109,13 @@ grep -rl "<키워드>" .done/ | sort -r        # 최근 것부터
 ls -t .done/ | head -5                      # 최근 세션 5개
 ```
 
-파일명이 `YYYY-MM-DD-HHMM-` 으로 시작하므로 **Glob 도구(`.done/*.md`)의 이름 정렬만으로도
-최근 순이 나옵니다.** 셸이 없거나 Windows PowerShell 인 환경에서는 그쪽을 쓰십시오.
+셸을 타지 않는 대안이 있습니다. **Glob 도구(`.done/*.md`)는 수정 시각 순으로 돌려주므로 그
+자체로 최근 것부터입니다.** 파일명이 `YYYY-MM-DD-HHMM-` 으로 시작하니 결과만 봐도 언제
+것인지 알 수 있습니다.
+
+> ⚠️ **이름 오름차순은 오래된 것부터입니다.** `ls .done/` 이나 이름으로 정렬한 목록의 맨 위는
+> **가장 오래된** 기록입니다. 최근 것을 원하면 위의 `ls -t` 나 `sort -r` 처럼 뒤집어야 합니다 —
+> 여기서 헷갈리면 반대쪽을 읽고도 "최신" 이라고 보고하게 됩니다.
 
 ## 하지 말 것
 

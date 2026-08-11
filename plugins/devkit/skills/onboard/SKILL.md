@@ -50,8 +50,12 @@ node -v; git --version; gh --version; claude --version
 실행되지 않습니다. macOS·Linux·WSL 이면 건너뛰십시오.
 
 devkit 의 커맨드들은 **bash 스니펫**으로 쓰여 있습니다. 네이티브 Windows 에서 Claude Code 는
-**Git for Windows 가 있으면 Git Bash 로**, 없으면 **PowerShell 로** 셸 명령을 실행합니다
-(공식 문서). PowerShell 로 떨어지면 `mkdir -p`·`grep -r`·`$(...)`·`sed` 가 전부 깨집니다.
+**Git for Windows 가 있으면 Git Bash 로**, 없으면 **PowerShell 로** 셸 명령을 실행합니다.
+PowerShell 로 떨어지면 `mkdir -p`·`grep -r`·`$(...)`·`sed` 가 전부 깨집니다.
+
+> 근거: [Advanced setup — Set up on Windows](https://code.claude.com/docs/en/setup#set-up-on-windows).
+> "Without Git for Windows, Claude Code runs shell commands via the PowerShell tool." 같은 문서가
+> Git Bash 경로를 못 찾을 때 `CLAUDE_CODE_GIT_BASH_PATH` 를 쓰라고 안내합니다.
 
 ```bash
 uname -s              # MINGW64_NT-… = Git Bash / Linux = WSL. 실패하면 PowerShell 입니다
@@ -70,6 +74,18 @@ Git for Windows 는 있는데 Claude 가 못 찾는 경우가 있습니다. 그�
 ```json
 { "env": { "CLAUDE_CODE_GIT_BASH_PATH": "C:\\Program Files\\Git\\bin\\bash.exe" } }
 ```
+
+**Git Bash 가 있는데도 PowerShell 로 실행되는 경우가 있습니다.** Git for Windows 가 깔린
+환경에도 PowerShell 도구가 점진적으로 배포되는 중입니다. devkit 은 bash 를 전제하므로 그때는
+껐다고 보고 진행하지 말고 아래로 명시적으로 끄십시오.
+
+```json
+{ "env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "0" } }
+```
+
+> **devkit 은 PowerShell 을 지원하지 않습니다.** 개별 명령에 PowerShell 대안을 끼워 넣지
+> 마십시오 — `mkdir` 한 줄이 돌아도 `$(...)`·`grep -rn`·`check-ignore && ||` 에서 막힙니다.
+> 부분 대안은 "PowerShell 로도 된다" 는 오해만 만듭니다. **Git Bash 나 WSL 로 가는 것이 답입니다.**
 
 > ⚠️ **Windows 팀원에게 iOS 를 약속하지 마십시오.** Android 개발·빌드는 전부 됩니다. iOS 는
 > `npx cap add ios` 로 폴더를 만드는 것까지만 되고, **빌드·시뮬레이터·서명은 맥이 필요합니다.**
@@ -193,7 +209,7 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 
 | 확인 | 명령 | 왜 문제인가 |
 |---|---|---|
-| `core` npm link 잔존 | `node -p "require('fs').lstatSync('<앱>/node_modules/@survivorsstudio/core').isSymbolicLink()"` | 커밋하면 **CI 가 없는 링크를 찾다 실패**합니다 |
+| `core` npm link 잔존 | 아래 스니펫 | 커밋하면 **CI 가 없는 링크를 찾다 실패**합니다 |
 | 플러그인 구버전·스코프 | D 참조 | 새 커맨드가 안 잡히거나 옛 절차를 따릅니다 |
 | `settings.local.json` 이 **추적됨** | `git -C <경로> ls-files -- .claude/settings.local.json` | 개인 설정이 팀에 올라갑니다 |
 | 앱 레포 위치가 흩어짐 | `devops-docs` 와 같은 부모 폴더에 있는지 | `/pr` 의 승격 후보 비교가 로컬 앱 레포를 봅니다 |
@@ -206,9 +222,25 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 > 추적 여부는 `ls-files` 의 **출력 유무**로 봅니다(출력이 있으면 추적 중 = 문제).
 > `.gitignore` 에 패턴이 있는지는 별도로 `git check-ignore -v` 로 봅니다.
 
+`core` 링크 판정은 이 스니펫을 씁니다. `<앱>` 자리에 앱 레포 경로를 넣으십시오.
+
+```bash
+node -p "const f=require('fs'),p='<앱>/node_modules/@survivorsstudio/core';f.existsSync(p)?f.lstatSync(p).isSymbolicLink():'설치 안 됨'"
+```
+
+`true` 면 링크가 남아 있는 것이고, `false` 면 정상 설치, `설치 안 됨` 이면 `npm install` 전입니다.
+
+> **경로는 `/` 로 쓰십시오.** Windows 절대경로를 그대로 붙여넣으면 `'C:\Users\hong\app-x'` 의
+> `\U`·`\h` 가 JS 문자열 이스케이프로 먹혀 경로가 `C:Usershongapp-x` 로 뭉개집니다. 그러면
+> "링크 아님" 이 아니라 **없는 경로 오류**가 나서 원인을 엉뚱한 데서 찾게 됩니다.
+> `C:/Users/hong/app-x` 로 쓰면 Windows 에서도 그대로 동작합니다.
+
+> **`existsSync` 가드를 빼지 마십시오.** `lstatSync` 는 경로가 없으면 `ENOENT` 로 **스택
+> 트레이스를 뱉고 죽습니다.** `npm install` 전이라는 정상 상황이 진단 실패로 보입니다.
+
 > **`ls -l` 로 심볼릭 링크를 판정하지 마십시오.** Windows 의 `npm link` 는 심볼릭 링크가 아니라
 > **디렉터리 정션(junction)** 을 만들고, Git Bash 의 `ls -l` 은 그것을 평범한 폴더로 보여줍니다.
-> Node 의 `lstat` 은 정션도 링크로 잡아내므로 위 명령이 세 OS 에서 같게 동작합니다.
+> Node 의 `lstat` 은 정션도 링크로 잡아내므로 위 스니펫이 세 OS 에서 같게 동작합니다.
 
 ---
 
