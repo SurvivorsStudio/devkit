@@ -132,7 +132,7 @@ plugins/devkit/
 **여러 번 실행해도 안전합니다.** 이미 된 것은 건드리지 않습니다.
 
 > ⚠️ **`/onboard` 로 최초 설치를 대체할 수 없습니다.** 플러그인이 없으면 `/onboard` 자체가
-> `Unknown command` 입니다. 위의 설치 두 줄은 `devops-docs/02_팀원_온보딩.md` 에 남아 있어야
+> `Unknown command` 입니다. 위의 [설치](#설치) 두 줄은 팀 온보딩 문서에도 남아 있어야
 > 합니다. 이 커맨드가 맡는 것은 **설치 이후의 모든 것**과 이미 어긋난 환경의 정상화입니다.
 
 ## `/done` 이 남기는 것
@@ -197,4 +197,4 @@ claude plugin update devkit@survivors
 |---|---|
 | [app-template](https://github.com/SurvivorsStudio/app-template) | 이 커맨드가 복제하는 원본 |
 | [core](https://github.com/SurvivorsStudio/core) | 앱 공통 기능 npm 패키지 |
-| [devops-docs](https://github.com/SurvivorsStudio/devops-docs) | 설계 근거·결정 기록 |
+| [devops-docs](https://github.com/SurvivorsStudio/devops-docs) | 설계 근거·결정 기록 (**Private** — 조직 멤버만) |
