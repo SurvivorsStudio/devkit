@@ -36,7 +36,7 @@ git rev-parse --show-toplevel        # 레포 루트
 git 레포가 아니면 현재 디렉터리를 씁니다. `.done/` 이 없으면 만듭니다:
 
 ```bash
-mkdir -p "<루트>/.done"
+mkdir -p "<루트>/.done"          # PowerShell: New-Item -ItemType Directory -Force <루트>\.done
 ```
 
 ## 2단계 — gitignore 확인
@@ -108,6 +108,9 @@ git check-ignore -q .done && echo "무시됨" || echo "추가 필요"
 grep -rl "<키워드>" .done/ | sort -r        # 최근 것부터
 ls -t .done/ | head -5                      # 최근 세션 5개
 ```
+
+파일명이 `YYYY-MM-DD-HHMM-` 으로 시작하므로 **Glob 도구(`.done/*.md`)의 이름 정렬만으로도
+최근 순이 나옵니다.** 셸이 없거나 Windows PowerShell 인 환경에서는 그쪽을 쓰십시오.
 
 ## 하지 말 것
 

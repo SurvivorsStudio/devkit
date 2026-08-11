@@ -87,32 +87,47 @@ cd <슬러그>
 
 `TEMPLATE.md` 는 **반드시 제외**합니다. 그 안의 토큰 표가 자기 자신을 치환해 문서가 깨집니다.
 
-```bash
-node -e '
-const fs=require("fs"), path=require("path");
-const map={
-  "{{APP_NAME}}":        process.argv[1],
-  "{{APP_ID}}":          process.argv[2],
-  "{{APP_SLUG}}":        process.argv[3],
-  "{{APP_DESCRIPTION}}": process.argv[4],
+**`node -e '…'` 로 인라인 실행하지 마십시오.** 홑따옴표로 여러 줄을 감싸는 방식은 Windows
+셸(PowerShell·CMD)에서 인용이 깨집니다. **Write 도구로 레포 루트에 `replace-tokens.mjs` 를 만든 뒤 실행하고, 끝나면
+그 파일을 지우십시오** — 인자만 겹따옴표로 넘기면 어느 셸에서도 같게 동작합니다.
+
+`replace-tokens.mjs`:
+
+```js
+import fs from "node:fs";
+import path from "node:path";
+const [name, id, slug, desc] = process.argv.slice(2);   // 스크립트 파일이므로 slice(2)
+const map = {
+  "{{APP_NAME}}":        name,
+  "{{APP_ID}}":          id,
+  "{{APP_SLUG}}":        slug,
+  "{{APP_DESCRIPTION}}": desc,
 };
-const skipDir=new Set(["node_modules",".git","dist","ios","android"]);
-const skipFile=new Set(["TEMPLATE.md"]);
-(function walk(d){
-  for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+const skipDir = new Set(["node_modules", ".git", "dist", "ios", "android"]);
+const skipFile = new Set(["TEMPLATE.md", "replace-tokens.mjs"]);
+(function walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     if (skipDir.has(e.name)) continue;
-    const p=path.join(d,e.name);
+    const p = path.join(d, e.name);
     if (e.isDirectory()) { walk(p); continue; }
     if (skipFile.has(e.name) || !/\.(ts|json|html|md|css|yml)$/.test(e.name)) continue;
-    let t=fs.readFileSync(p,"utf8"); const o=t;
-    for (const [k,v] of Object.entries(map)) t=t.split(k).join(v);
-    if (t!==o) { fs.writeFileSync(p,t); console.log("  "+path.relative(".",p)); }
+    let t = fs.readFileSync(p, "utf8"); const o = t;
+    for (const [k, v] of Object.entries(map)) t = t.split(k).join(v);
+    if (t !== o) { fs.writeFileSync(p, t); console.log("  " + path.relative(".", p)); }
   }
 })(".");
-' "<앱이름>" "<번들ID>" "<슬러그>" "<설명>"
 ```
 
+```bash
+node replace-tokens.mjs "<앱이름>" "<번들ID>" "<슬러그>" "<설명>"
+```
+
+**실행한 뒤 `replace-tokens.mjs` 를 지우십시오.** 커밋에 딸려 들어가면 앱 레포에 남습니다.
+
 잔여 토큰이 0인지 확인합니다. 하나라도 남으면 멈추고 원인을 찾으십시오.
+
+**Grep 도구로 확인하십시오** — 패턴 `\{\{APP_`, 셸을 타지 않아 Windows 에서도 같습니다.
+셸을 쓴다면 이것과 동등합니다:
 
 ```bash
 grep -rn "{{APP_" --include="*.ts" --include="*.json" --include="*.html" --include="*.md" . | grep -v node_modules
@@ -134,7 +149,7 @@ npx cap add android
 ### 세션 기록 폴더
 
 ```bash
-mkdir -p .done
+mkdir -p .done                                  # PowerShell: New-Item -ItemType Directory -Force .done
 ```
 
 `/done` 이 세션 요약을 여기에 씁니다. **gitignore 되므로 커밋되지 않습니다** — 템플릿에 담아
@@ -142,6 +157,11 @@ mkdir -p .done
 들어 있는지 확인하십시오.
 
 Xcode 나 Java 가 없어도 `cap add` 는 동작합니다. 실제 빌드에만 필요합니다.
+
+> **Windows 에서도 `cap add ios` 를 그대로 실행하십시오.** `ios/` 폴더가 레포에 들어 있어야
+> 나중에 맥에서 그대로 빌드할 수 있습니다. 다만 두 가지를 팀원에게 알리십시오 — `pod install`
+> 은 macOS 에서만 돌아 건너뛰어지고(`ios/App/Pods/` 는 gitignore 대상이라 무해합니다),
+> **iOS 빌드·시뮬레이터 확인은 맥이 있어야** 합니다. Android 는 Windows 에서 전부 됩니다.
 
 ### 앱 레포용으로 문서 손보기
 
@@ -208,6 +228,6 @@ git push origin main
 |---|---|
 | `gh repo create` 권한 오류 | `gh auth status` · 조직 멤버 권한 |
 | 앱이 `devops-docs` 안에 생겼음 | `cd ..` 를 빠뜨렸습니다. **바깥으로 옮기고**(`mv`) 문서 레포의 `git status` 가 깨끗한지 확인 |
-| 잔여 토큰이 남음 | 치환 대상 확장자 목록에 그 파일이 있는지 |
+| 잔여 토큰이 남음 | 치환 대상 확장자 목록에 그 파일이 있는지. **`node -e '…'` 를 인라인으로 실행했다면** Windows 셸에서 인용이 깨진 것입니다 |
 | Android 빌드에서 패키지명 오류 | 번들 ID 에 하이픈이 들어갔는지 |
 | CI 빨강 | 로컬에서 `npm ci && npm run typecheck && npm run build` 재현 |
