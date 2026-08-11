@@ -31,7 +31,10 @@ claude plugin list          # devkit@survivors ✔ enabled
 > clone·설치를 트리거하지 않습니다. 설정 커밋이 없애 준 것은 *무엇을 설치할지 알아내는 일*이지
 > 설치 그 자체가 아닙니다.
 >
-> 설치 기록이 사는 곳도 `~/.claude/settings.json` 이 아니라 `~/.claude/plugins/` 입니다.
+> **설치 여부는 `claude plugin list` 로만 판단하십시오.** 설치하면 `~/.claude/plugins/` 에
+> 기록이 생기는데, 동시에 `~/.claude/settings.json` 의 `enabledPlugins` 에도 항목이 **함께**
+> 써집니다. 그래서 `settings.json` 에 항목이 있다는 것으로는 설치됐는지 안 됐는지 알 수 없습니다
+> — 선언만 해도 있고, 설치해도 있습니다.
 
 > ⚠️ **슬래시 `/plugin` 은 주 경로가 아닙니다.** 대화형 패널이라 환경에 따라 막혀 있습니다
 > ("`/plugin` isn't available in this environment"). 위의 셸 CLI 는 어디서나 동작합니다 —

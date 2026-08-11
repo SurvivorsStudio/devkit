@@ -1,6 +1,6 @@
 {
   "name": "devkit",
-  "description": "SurvivorsStudio 앱 개발 커맨드. app-template 에서 새 앱 레포를 만듭니다.",
+  "description": "SurvivorsStudio 앱 개발 커맨드 — /onboard(환경 진단·정상화) /new-app /pr /pr-merge /done",
   "author": {
     "name": "SurvivorsStudio"
   }
