@@ -8,7 +8,7 @@
       "name": "devkit",
       "source": {
         "source": "local",
-        "path": "./plugins/devkit"
+        "path": "./codex-plugins/devkit"
       },
       "policy": {
         "installation": "AVAILABLE",

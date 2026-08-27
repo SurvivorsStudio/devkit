@@ -1,7 +1,6 @@
 ---
 name: pr
 description: 현재 작업을 논리 단위로 커밋하고, AI 리뷰를 한 번 받은 뒤 PR 을 만듭니다. main 에 있으면 새 브랜치를 자동으로 땁니다. 사용자가 "/pr", "PR 올려", "PR 만들어" 라고 할 때 사용합니다.
-disable-model-invocation: true
 ---
 
 # PR 만들기

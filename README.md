@@ -40,10 +40,10 @@ codex plugin list
 로컬에서 개발할 때는 `codex plugin marketplace add /path/to/devkit`으로 클론 경로를 등록할 수도
 있습니다.
 
-저장소를 갱신한 뒤에는 현재 등록된 마켓플레이스에서 다시 설치합니다.
+저장소를 갱신한 뒤에는 등록된 Git 마켓플레이스 스냅샷을 먼저 갱신하고 다시 설치합니다.
 
 ```bash
-codex plugin marketplace add SurvivorsStudio/devkit --ref main
+codex plugin marketplace upgrade survivors
 codex plugin add devkit@survivors
 codex plugin list
 ```
@@ -64,19 +64,32 @@ codex plugin list
 호스트가 이름공간을 표시하면 `/devkit:pr`처럼 호출할 수 있습니다. 새 설치나 갱신 직후에는
 새 세션에서 스킬 검색 결과를 확인하십시오.
 
-## 단일 본문 · 이중 매니페스트
+## Claude canonical · Codex 생성 배포본
 
 ```text
 .claude-plugin/marketplace.json          Claude Code 마켓플레이스
 .agents/plugins/marketplace.json         Codex 팀 마켓플레이스
 plugins/devkit/
 ├── .claude-plugin/plugin.json           Claude Code 매니페스트 (version 없음)
-├── .codex-plugin/plugin.json            Codex 매니페스트 (엄격한 semver version)
 ├── agents/pr-reviewer.md                 읽기 전용 PR 리뷰 절차
-└── skills/                               두 런타임이 함께 쓰는 스킬 본문
+└── skills/                               Claude Code의 canonical 스킬 본문
+codex-plugins/devkit/
+├── .codex-plugin/plugin.json            Codex 매니페스트 (엄격한 semver version)
+├── agents/                               canonical agents에서 생성
+└── skills/                               canonical skills에서 생성
+scripts/sync-codex-plugin.sh              Codex 배포본 생성·동기화 검사
 ```
 
-스킬과 에이전트 본문은 복제하지 않습니다. 호스트별 발견·설치 메타데이터만 분리합니다.
+Claude Code 본문이 원본입니다. `done`, `pr`, `pr-merge`의
+`disable-model-invocation: true`는 Claude 전용 안전 필드이므로 원본에만 둡니다. Codex 배포본은
+같은 본문에서 이 필드만 제거해 생성하며, 손으로 고치지 않습니다.
+
+원본을 고친 뒤 다음을 실행하고 생성물이 최신인지 확인합니다.
+
+```bash
+./scripts/sync-codex-plugin.sh
+./scripts/sync-codex-plugin.sh --check
+```
 
 ### 버전 정책
 
@@ -84,14 +97,14 @@ Claude Code 매니페스트는 의도적으로 `version`을 두지 않습니다.
 저장소 변경 후 `claude plugin update devkit@survivors`로 갱신합니다.
 
 Codex 매니페스트는 엄격한 semantic version이 필수입니다. 배포 가능한 변경에서는
-`plugins/devkit/.codex-plugin/plugin.json`의 버전을 올리고 다시 설치합니다. Claude 매니페스트에
+`codex-plugins/devkit/.codex-plugin/plugin.json`의 버전을 올리고 다시 설치합니다. Claude 매니페스트에
 Codex 버전을 복사하지 마십시오.
 
 ## 스킬을 고칠 때
 
 새 공용 스킬은 `plugins/devkit/skills/<이름>/SKILL.md`에 추가합니다. 마켓플레이스에는 플러그인만
-등록하므로 스킬마다 별도 등록하지 않습니다. 변경 후 두 매니페스트와 마켓플레이스를 보존하고,
-각 런타임에서 갱신한 뒤 새 세션으로 확인하십시오.
+등록하므로 스킬마다 별도 등록하지 않습니다. 변경 후 생성 스크립트를 실행하고, 각 런타임에서
+갱신한 뒤 새 세션으로 확인하십시오.
 
 ## 관련 저장소
 

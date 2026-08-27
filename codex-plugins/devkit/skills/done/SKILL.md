@@ -1,7 +1,6 @@
 ---
 name: done
 description: 이 세션에서 무엇을 결정했고 왜 그랬는지를 요약해 레포의 .done/ 에 저장합니다. 사용자가 "/done", "이번 세션 정리해", "작업 기록 남겨" 라고 할 때 사용합니다.
-disable-model-invocation: true
 ---
 
 # 세션 기록 남기기
