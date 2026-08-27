@@ -1,7 +1,6 @@
 ---
 name: pr-merge
 description: PR 을 squash 머지합니다. CI 통과를 기다린 뒤 요약을 보여주고 곧바로 머지, 이후 브랜치를 정리하고 로컬 main 을 갱신합니다. 사용자가 "/pr-merge #12", "PR 머지해" 라고 할 때 사용합니다.
-disable-model-invocation: true
 ---
 
 # PR 머지
