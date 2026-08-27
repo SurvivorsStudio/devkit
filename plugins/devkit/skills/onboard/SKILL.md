@@ -19,7 +19,7 @@ description: 팀원의 개발 환경을 진단하고 정상화합니다. 필수 
 | **사람만 할 수 있는 것은 넘깁니다** | 브라우저 인증, 조직 초대, 대용량 설치는 명령만 알려 줍니다 |
 | **중간에 멈춰도 손해가 없어야 합니다** | 반쯤 고쳐진 상태가 남지 않는 순서로 진행합니다 |
 
-> ⚠️ **이 커맨드는 devkit 플러그인이 이미 설치된 사람만 부를 수 있습니다.**
+> ⚠️ **이 커맨드는 현재 실행 중인 런타임에 devkit 플러그인이 이미 설치된 사람만 부를 수 있습니다.**
 > 플러그인이 없으면 `/onboard` 자체가 `Unknown command` 입니다. 최초 설치 두 줄은
 > `devops-docs/02_팀원_온보딩.md` 에 남겨 두었습니다 — 그걸 이 커맨드로 대체할 수 없습니다.
 > 이 커맨드가 맡는 것은 **설치 이후의 모든 것**과 **이미 어긋난 환경의 정상화**입니다.
@@ -31,18 +31,23 @@ description: 팀원의 개발 환경을 진단하고 정상화합니다. 필수 
 **전부 실행한 뒤 한 번에 보고합니다.** 하나 실패할 때마다 멈추지 마십시오 — 팀원은 자기 환경에
 몇 개가 문제인지 한눈에 알고 싶어 합니다.
 
-### A. 필수 도구
+### A. 필수 도구와 현재 런타임
 
 ```bash
-node -v; git --version; gh --version; claude --version
+node -v; git --version; gh --version
 ```
 
 | 항목 | 합격 기준 |
 |---|---|
 | Node | **22 이상** (Capacitor CLI 요구사항) |
-| git · gh · claude | 있으면 됨 |
+| git · gh | 있으면 됨 |
+| 현재 실행 중인 런타임의 CLI | Claude Code이면 `claude --version`, Codex이면 `codex --version`이 동작 |
 
 메이저 버전만 뽑아 비교하십시오: `node -v | sed 's/v\([0-9]*\).*/\1/'`
+
+다른 런타임은 설치되어 있으면 함께 진단하고, 없으면 **경고**로만 보고하십시오. 현재 런타임의
+CLI·플러그인 상태는 필수입니다. 다른 런타임이 없다는 이유로 환경 점검 전체를 실패로 처리하지
+마십시오.
 
 ### A-2. Windows 인 경우에만 — 셸 확인
 
@@ -126,30 +131,56 @@ git config --show-origin --get user.email
 — 계정이 둘 이상인 사람은 폴더별로 갈라 두는 경우가 있고(`includeIf "gitdir:..."`), 그게 의도한
 대로 걸려 있는지가 여기서 드러납니다.
 
-### D. devkit 플러그인
+### D. Claude Code · Codex 플러그인
+
+현재 실행 중인 런타임은 반드시 확인합니다.
 
 ```bash
+# Claude Code에서 실행 중일 때
 claude plugin list
+
+# Codex에서 실행 중일 때
+codex plugin list
 ```
 
-> **미설치는 진단 대상이 아닙니다.** `/onboard` 가 돌고 있다는 것 자체가 devkit 이 설치·활성
-> 상태라는 뜻입니다. 여기서 볼 것은 **스코프**와 **버전**입니다.
+다른 런타임은 CLI가 설치되어 있을 때만 다음을 실행합니다. `command -v`가 실패하면
+`⚠ <런타임> CLI 미설치 — 해당 런타임 플러그인 진단 건너뜀`으로 보고하십시오.
 
-| 항목 | 합격 기준 |
+```bash
+command -v claude >/dev/null && claude plugin list
+command -v codex >/dev/null && codex plugin list
+```
+
+> **현재 런타임의 미설치는 진단 대상이 아닙니다.** `/onboard`가 돌고 있다는 것 자체가 현재
+> 런타임에서 devkit이 설치·활성 상태라는 뜻입니다. 여기서 볼 것은 설치 목록과 갱신 상태입니다.
+
+| 런타임 | 확인 항목 |
 |---|---|
-| Status | `✔ enabled` |
-| **Scope** | **`user`.** `project` 나 `local` 이면 **다른 폴더에서 안 잡힙니다** |
-| Version | 원격 최신과 일치 (아래) |
+| Claude Code | `claude plugin list`에서 `devkit@survivors`가 enabled. Scope가 `user`인지와 버전을 확인 |
+| Codex | `codex plugin list --json`에서 `devkit@survivors`가 installed·enabled인지와 설치 버전을 확인 |
 
-`Scope: project` 는 실제로 나옵니다 — `claude plugin install` 에 `--scope project` 를 주면
-그렇게 설치됩니다(기본값은 `user`). 이 경우 devops-docs 에서는 되고 앱 레포에서는 `/pr` 이
-없는 상태가 되어, 원인을 찾기 어렵습니다.
+Codex는 설치 목록의 `.installed[] | select(.pluginId == "devkit@survivors") | .version`과 등록된
+마켓플레이스 스냅샷의 `plugins/devkit/.codex-plugin/plugin.json`에 있는 `version`을 비교하십시오.
+마켓플레이스가 Git 소스라면 먼저 스냅샷을 갱신한 뒤 비교합니다. 버전이 다르면 구버전입니다.
+
+```bash
+codex plugin list --json
+codex plugin marketplace add SurvivorsStudio/devkit --ref main
+codex plugin list --available --marketplace survivors --json
+```
+
+JSON에서 `devkit@survivors`를 찾지 못하거나 버전 필드가 없으면 최신이라고 추정하지 말고 판정
+불가로 보고하십시오.
+
+Claude의 `Scope: project`는 실제로 나옵니다 — `claude plugin install`에 `--scope project`를 주면
+그렇게 설치됩니다(기본값은 `user`). 이 경우 devops-docs에서는 되고 앱 레포에서는 `/pr`이 없는
+상태가 되어, 원인을 찾기 어렵습니다.
 
 > ⚠️ **`.claude/settings.json` 을 보고 판단하지 마십시오.** `enabledPlugins` 에 항목이 있어도
 > 설치된 것이 아닙니다(선언과 설치는 별개). 반대로 설치하면 그 파일에도 항목이 **함께** 써지므로,
 > 파일 존재 여부로는 어느 쪽도 알 수 없습니다. **판단은 `claude plugin list` 로만** 하십시오.
 
-버전 비교는 **길이가 다르므로 접두 비교**여야 합니다. `claude plugin list` 의 `version` 은 12자
+Claude 버전 비교는 **길이가 다르므로 접두 비교**여야 합니다. `claude plugin list` 의 `version` 은 12자
 축약 SHA 이고 `git ls-remote` 는 40자를 줍니다 — 그대로 비교하면 최신인데도 항상 불일치합니다.
 
 ```bash
@@ -211,7 +242,7 @@ git clone https://github.com/SurvivorsStudio/devops-docs
 |---|---|---|
 | `core` npm link 잔존 | 아래 스니펫 | 커밋하면 **CI 가 없는 링크를 찾다 실패**합니다 |
 | 플러그인 구버전·스코프 | D 참조 | 새 커맨드가 안 잡히거나 옛 절차를 따릅니다 |
-| `settings.local.json` 이 **추적됨** | `git -C <경로> ls-files -- .claude/settings.local.json` | 개인 설정이 팀에 올라갑니다 |
+| 런타임 로컬 설정이 **추적됨** | `git -C <경로> ls-files -- .claude/settings.local.json .codex/config.toml .codex/auth.json` | 개인 설정이 팀에 올라갑니다 |
 | 앱 레포 위치가 흩어짐 | `devops-docs` 와 같은 부모 폴더에 있는지 | `/pr` 의 승격 후보 비교가 로컬 앱 레포를 봅니다 |
 
 > ⚠️ **`git check-ignore` 로 "추적됨" 을 판단하지 마십시오.** man page 그대로입니다 —
@@ -253,10 +284,11 @@ node -p "const f=require('fs'),p='<앱>/node_modules/@survivorsstudio/core';f.ex
 환경 진단 결과
 
   ✓ Node 22.14.0
-  ✓ git · gh · claude
+  ✓ git · gh · 현재 런타임 CLI
   ✓ GitHub 로그인 — babysean (조직 접근 OK)
   ✗ 토큰에 workflow 스코프 없음        → 앱 레포 첫 푸시가 거부됩니다
-  ✗ devkit 이 project 스코프로 설치됨  → 앱 레포에서 /pr 이 안 잡힙니다
+  ✗ Claude devkit 이 project 스코프로 설치됨  → 앱 레포에서 /pr 이 안 잡힙니다
+  ⚠ Codex CLI 미설치 — Codex 플러그인 진단 건너뜀
   ⚠ devkit 이 3커밋 뒤짐
   ⚠ app-hansonjump 에 core npm link 가 남아 있음
 
@@ -273,7 +305,7 @@ node -p "const f=require('fs'),p='<앱>/node_modules/@survivorsstudio/core';f.ex
 
 ## 3단계 — 확인받기
 
-`AskUserQuestion` 으로 묻습니다. **승인 없이 수리하지 마십시오.**
+현재 런타임에서 제공하는 사용자 확인 방식으로 묻습니다. **승인 없이 수리하지 마십시오.**
 
 - 자동 수리 가능한 항목을 나열하고 **전부 / 골라서 / 진단만** 중에서 고르게 합니다
 - 사람이 해야 하는 항목은 선택지에 넣지 말고, 명령만 그대로 보여줍니다
@@ -287,7 +319,8 @@ node -p "const f=require('fs'),p='<앱>/node_modules/@survivorsstudio/core';f.ex
 
 | 문제 | 수리 | 세션 재시작 |
 |---|---|---|
-| 플러그인 구버전 | `claude plugin update devkit@survivors` | 필요 |
+| Claude 플러그인 구버전 | `claude plugin update devkit@survivors` | 필요 |
+| Codex 플러그인 갱신 | 저장소 루트에서 `codex plugin add devkit@survivors` | 필요 |
 | `devops-docs` 뒤짐 | `git -C <경로> pull --ff-only origin main` | — |
 | `.done/` 없음 | `mkdir -p <경로>/.done` | — |
 | git 신원 없음 | 이름·이메일을 **물어본 뒤** `git config --global user.name` · `user.email` | — |
@@ -347,7 +380,8 @@ git diff package.json package-lock.json      # 의존성이 남아 있는지 반
 수리한 항목만 다시 확인합니다. 전체 진단을 처음부터 돌리지 마십시오.
 
 플러그인을 설치·갱신했다면 **이 세션에서는 확인이 불가능합니다.** 플러그인은 세션 시작 시점에
-로드되므로 `claude plugin list` 로 설치 사실만 확인하고, 커맨드가 잡히는지는 새 세션에서 봅니다.
+로드되므로 현재 런타임의 플러그인 목록으로 설치 사실만 확인하고, 커맨드가 잡히는지는 새 세션에서
+봅니다.
 
 > ⚠️ **세션 중간에 설치하면 `/devkit:pr` 같은 정식 이름만 잡히고 bare `/pr` 은 실패합니다.**
 > 이것을 "bare 이름은 원래 안 된다" 로 오해하기 쉽습니다. 새 세션에서 판단하도록 안내하십시오.
@@ -368,7 +402,7 @@ git diff package.json package-lock.json      # 의존성이 남아 있는지 반
 - **`git reset --hard` · `git checkout -- .` · `git clean` 을 쓰지 마십시오.** 팀원의 작업이
   날아갑니다. 워킹 트리가 더러우면 보고만 하십시오
 - **이미 있는 클론 위에 다시 클론하지 마십시오.** 경로를 확인하고, 있으면 그것을 쓰십시오
-- **`.claude/settings.local.json` 을 통째로 덮어쓰지 마십시오.** 개인 설정이 들어 있습니다.
+- **`.claude/settings.local.json` 또는 Codex 사용자 설정을 프로젝트에 복사한 `.codex/config.toml`·`.codex/auth.json`을 통째로 덮어쓰지 마십시오.** 개인 설정이 들어 있습니다.
   고칠 것이 있으면 해당 키만 바꾸십시오
 - **`.claude/settings.json`(팀 공용)을 이 커맨드로 고치지 마십시오.** 그건 PR 로 합니다
 - **확인 없이 수리하지 마십시오.** 3단계는 생략 불가입니다
